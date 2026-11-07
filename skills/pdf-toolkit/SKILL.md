@@ -16,7 +16,7 @@ This skill guides the agent in effectively using the **`pdf-toolkit`** MCP serve
 
 1. **`pdf_read_text`**: Extracts formatted text. Use `start_page` and `end_page` to prevent context window bloat on large documents.
 2. **`pdf_get_metadata`**: Checks total pages, file size, title, and author before performing heavy operations.
-3. **`pdf_search_batch`**: Scans multiple PDFs (e.g. `L*.pdf` or `*.pdf`) for keywords/regex and returns page numbers with snippet previews.
+3. **`pdf_search_batch`**: Scans multiple PDFs (e.g. `*.pdf`) for keywords/regex and returns page numbers with snippet previews.
 4. **`pdf_compare_files`**: Page-by-page textual comparison of two PDFs.
 5. **`pdf_from_markdown`** *(Recommended for Document Generation)*: Compiles a `.md` file (`markdown_file`) or raw Markdown string (`markdown_text`) directly into a publication-grade A4 PDF with cover page, headers/footers, styled Q&A cards, shaded code blocks, styled tables, alert callouts, embedded images, and full Turkish/Unicode support. **Never write intermediate Python scripts to dump JSON when you can write or pass Markdown directly!**
 6. **`pdf_generate_report`**: Generates a PDF document from structured JSON data or an external file path (`input_file`). Supports item types: `qa`, `paragraph`, `bullet`, `code`, `table`, `callout`, and `image`.
@@ -30,35 +30,35 @@ Write a `.md` file or pass `markdown_text` directly to `pdf_from_markdown`:
 
 ```markdown
 ---
-title: VERİTABANI YÖNETİM SİSTEMLERİ
-subtitle: Konu Değerlendirme ve Sınav Rehberi
-category: DERS NOTLARI
-description: Bu rapor ders kapsamında ele alınan konuların detaylı çözümlerini içerir.
+title: CLOUD ARCHITECTURE AUDIT
+subtitle: Security & Performance Review
+category: TECHNICAL REPORT
+description: Comprehensive overview of distributed services and latency metrics.
 theme: navy_blue
-Hazırlayan: Ceyhun TUFAN
-Tarih: 2026
+Author: Engineering Team
+Date: 2026
 ---
 
-# BÖLÜM 1: TEMEL KAVRAMLAR
+# SECTION 1: CORE ARCHITECTURE
 
-## Soru 1.1: Veri ile bilgi arasındaki fark nedir?
-Veri ham ve işlenmemiş gerçeklerdir; bilgi ise analiz edilerek anlamlandırılmış çıktıdır.
+## Question 1.1: How does caching improve API throughput?
+Edge caching reduces database load by serving frequently requested payloads directly from memory.
 
-> [!TIP] Performans İpucu
-> Seçme ve izdüşüm işlemlerini birleştirmeden (Join) önce uygulamak maliyeti düşürür.
+> [!TIP] Performance Tip
+> Enable connection pooling before scaling worker instances.
 
-- **Birincil Anahtar (PK):** Tekil ve NULL olamaz.
-- **Yabancı Anahtar (FK):** Başvuru bütünlüğünü korur.
+- **Gateway Layer:** Handles authentication and rate limiting.
+- **Service Mesh:** Manages internal service-to-service communication.
 
 ```sql
-SELECT * FROM ogrenci WHERE ortalama >= 3.00;
+SELECT service_id, AVG(response_ms) FROM metrics GROUP BY service_id;
 ```
 
-| Ders Kodu | Ders Adı | Kredi |
+| Service ID | Component | SLA |
 | :--- | :--- | :--- |
-| BM335 | Veritabanı Yönetim Sistemleri | 4 |
+| SVC-01 | Auth Gateway | 99.99% |
 
-![ER Diyagramı](raporlar/ermodel.drawio.png)
+![System Diagram](assets/diagram.png)
 ```
 
 Then call `pdf_from_markdown`:
@@ -72,12 +72,12 @@ Then call `pdf_from_markdown`:
 ### 2. Generating a Styled PDF via Structured JSON (`pdf_generate_report`)
 Supported item types inside `sections[].items`:
 - `qa`: `{"type": "qa", "q_num": "1.1", "question": "...", "answer": "..."}`
-- `paragraph`: `{"type": "paragraph", "bold_prefix": "Not:", "text": "..."}`
-- `bullet`: `{"type": "bullet", "title": "Başlık", "text": "..."}`
+- `paragraph`: `{"type": "paragraph", "bold_prefix": "Note:", "text": "..."}`
+- `bullet`: `{"type": "bullet", "title": "Title", "text": "..."}`
 - `code`: `{"type": "code", "code": "SELECT 1;"}`
 - `table`: `{"type": "table", "headers": ["A", "B"], "rows": [["1", "2"]]}`
 - `callout`: `{"type": "callout", "kind": "note|tip|warning|important|caution", "title": "...", "text": "..."}`
-- `image`: `{"type": "image", "image_path": "C:/path/to/img.png", "caption": "Şekil 1"}`
+- `image`: `{"type": "image", "image_path": "C:/path/to/img.png", "caption": "Figure 1"}`
 
 You can also pass `"input_file": "C:/path/to/payload.json"` to avoid serializing huge JSON payloads in tool arguments.
 

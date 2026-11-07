@@ -7,25 +7,25 @@
 [![MCP Compliant](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io/)
 [![Version 1.1.0](https://img.shields.io/badge/version-1.1.0-emerald.svg)]()
 
-### 🌐 [**🇬🇧 English Documentation**](#-english-documentation) &nbsp;|&nbsp; [**🇹🇷 Türkçe Dokümantasyon**](#-türkçe-dokümantasyon)
+### 🌐 [**🇬🇧 English Documentation**](#english-documentation) &nbsp;|&nbsp; [**🇹🇷 Türkçe Dokümantasyon**](#turkce-dokumantasyon)
 
 </div>
 
 ---
 
-<a name="-english-documentation"></a>
+<a id="english-documentation"></a>
 
 # 🇬🇧 English Documentation
 
 **PDF-MCP** is a lightweight, high-performance **Model Context Protocol (MCP)** server and command-line (CLI) toolkit designed for AI coding assistants (**Google Antigravity**, **Claude Desktop**, **Cursor**) and developers.
 
-It empowers AI agents to natively inspect, batch-search, and diff PDF documents, as well as compile **publication-grade A4 PDF reports directly from Markdown (`.md`) or structured JSON**—complete with cover pages, Q&A cards, code blocks, zebra-striped tables, callout alerts, embedded diagrams, and full UTF-8/Turkish typography support—without writing intermediate dump scripts.
+It empowers AI agents to natively inspect, batch-search, and diff PDF documents, as well as compile **publication-grade A4 PDF reports directly from Markdown (`.md`) or structured JSON**—complete with cover pages, Q&A cards, code blocks, zebra-striped tables, callout alerts, embedded diagrams, and full UTF-8/Unicode typography support—without writing intermediate dump scripts.
 
 ---
 
 ## 🆕 What's New in v1.1.0
 
-- **📝 Markdown-First PDF Compiler (`pdf_from_markdown`)**: Pass a standard Markdown file or string; the engine automatically compiles YAML frontmatter, `#` sections, `##` Q&A cards, ` ``` ` code blocks, `| tables |`, `> [!NOTE]` callouts, and `![caption](img)` figures into a styled PDF.
+- **📝 Markdown-First PDF Compiler (`pdf_from_markdown`)**: Pass a standard Markdown file or string; the engine automatically compiles YAML frontmatter, `#` sections, `##` Q&A cards, fenced code blocks, Markdown tables, `> [!NOTE]` callouts, and `![caption](img)` figures into a styled PDF.
 - **📊 Native Styled Table Engine (`table`)**: Automatic column sizing, primary-colored headers, and alternating row backgrounds (zebra striping).
 - **💡 Rich Alert / Callout Boxes (`callout`)**: Left-accented callout panels for `NOTE`, `TIP`, `WARNING`, `IMPORTANT`, and `CAUTION`.
 - **🖼️ Smart Image & Diagram Embedding (`image`)**: Aspect-ratio preserving centered image rendering with italic captions and graceful fallback placeholders if an image path is missing.
@@ -40,10 +40,10 @@ It empowers AI agents to natively inspect, batch-search, and diff PDF documents,
 | **`pdf_from_markdown`** | ***(New)*** Compiles a `.md` file or raw Markdown string directly into a publication-grade styled PDF report. |
 | **`pdf_generate_report`** | Builds a styled PDF from structured JSON data or an external `input_file` (`qa`, `table`, `callout`, `image`, `code`, `bullet`). |
 | **`pdf_read_text`** | Extracts clean text from an entire PDF or specific page ranges (`start_page` - `end_page`, 1-based). |
-| **`pdf_search_batch`** | Rapidly searches across dozens of PDFs in a directory (`*.pdf`, `L*.pdf`) using keywords or regular expressions. |
+| **`pdf_search_batch`** | Rapidly searches across dozens of PDFs in a directory (`*.pdf`, `report_*.pdf`) using keywords or regular expressions. |
 | **`pdf_get_metadata`** | Retrieves total page count, file size, title, author, and encryption status. |
 | **`pdf_compare_files`** | Compares two PDF files page-by-page to pinpoint textual differences. |
-| **Full Unicode / Turkish** | Native TrueType font support (`Arial`, `Calibri`, `Segoe UI`, `Consolas`, `DejaVu`) for flawless `ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş` rendering. |
+| **Full Unicode / Turkish** | Native TrueType font support (`Arial`, `Calibri`, `Segoe UI`, `Consolas`, `DejaVu`) for flawless international and Turkish (`ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş`) rendering. |
 
 ---
 
@@ -98,7 +98,7 @@ pip install -e .
 
 ---
 
-## ⚡ Instant Usage Guide (Markdown $\rightarrow$ PDF)
+## ⚡ Instant Usage Guide (Markdown → PDF)
 
 ### Scenario: Compile Markdown to PDF in One Step (Recommended)
 
@@ -106,40 +106,40 @@ Create a `.md` file with optional YAML frontmatter to configure the cover page a
 
 ````markdown
 ---
-title: DATABASE MANAGEMENT SYSTEMS
-subtitle: Past Exam Questions & Comprehensive Solutions
-category: COURSE NOTES
-description: Complete solution guide covering relational algebra, ER modeling, and SQL.
+title: CLOUD INFRASTRUCTURE AUDIT REPORT
+subtitle: Q4 Security, Latency & Scalability Review
+category: TECHNICAL REPORT
+description: Comprehensive architectural evaluation of distributed API services and storage layers.
 theme: navy_blue
-Instructor: Assoc. Prof. Ahmet Arif AYDIN
-Author: Ceyhun TUFAN
+Prepared By: Platform Engineering Team
+Author: Alex Rivera
 Date: 2026
 ---
 
-# SECTION 1: CORE CONCEPTS & ER MODELING
+# SECTION 1: SERVICE ARCHITECTURE & LATENCY
 
-## Question 1.1: What is Data Independence?
-Data independence is the capacity to change the schema at one level of a database system without having to change the schema at the next higher level.
+## Question 1.1: How does edge caching impact P99 response times?
+Deploying regional edge caches reduces round-trip latency by serving static and pre-computed payloads directly from points of presence closest to the client.
 
-> [!IMPORTANT] Referential Integrity Rule
-> Dependent child records must be deleted or updated before removing a parent primary key record unless ON DELETE CASCADE is specified.
+> [!IMPORTANT] Rate Limiting Policy
+> All public endpoints must enforce token-bucket rate limiting at the API Gateway layer prior to production rollout.
 
-- **Logical Data Independence:** Protects external views from conceptual schema changes.
-- **Physical Data Independence:** Protects conceptual schema from storage and indexing changes.
+- **Edge Gateway:** Handles TLS termination and request routing.
+- **Worker Pool:** Processes asynchronous background jobs with automatic retry policies.
 
 ```sql
-SELECT s.student_name, COUNT(e.course_code) AS total_courses
-FROM students s
-JOIN enrollments e ON s.student_id = e.student_id
-GROUP BY s.student_name;
+SELECT service_name, AVG(latency_ms) AS avg_latency
+FROM telemetry_logs
+WHERE status_code = 200
+GROUP BY service_name;
 ```
 
-| Course Code | Course Title | Enrolled Students |
+| Service ID | Component Name | Uptime SLA |
 | :--- | :--- | :--- |
-| BM335 | Database Management Systems | 2 |
-| BM315 | Programming Languages | 3 |
+| SVC-101 | Auth Gateway | 99.99% |
+| SVC-204 | Billing Engine | 99.95% |
 
-![University ER Diagram](raporlar/ermodel.drawio.png)
+![System Topology Diagram](assets/topology.png)
 ````
 
 #### Invoke via MCP Tool (`pdf_from_markdown`):
@@ -157,8 +157,8 @@ GROUP BY s.student_name;
 | `--- ... ---` (YAML Frontmatter) | Cover page title, subtitle, abstract box, color theme, and bottom metadata key-values |
 | `# SECTION 1: ...` | Full-width colored Section Header banner (`add_section_header`) |
 | `## Question 1: ...` or `## Soru 1: ...` | Left-accented shaded Q&A Card (`add_qa`) + subsequent paragraph as answer |
-| ` ```sql ... ``` ` | Shaded monospace Code Block (`add_code_block`) |
-| `\| Col 1 \| Col 2 \|` | Zebra-striped Table with primary-colored header (`add_table`) |
+| ```` ```sql ... ``` ```` | Shaded monospace Code Block (`add_code_block`) |
+| `&#124; Col 1 &#124; Col 2 &#124;` | Zebra-striped Table with primary-colored header (`add_table`) |
 | `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` | Styled Callout / Alert Box (`add_callout`) |
 | `![Caption](path/to/img.png)` | Centered auto-scaled Image with italic caption (`add_image`) |
 | `- **Title:** Description` | Bold-prefixed Bullet Point (`add_bullet`) |
@@ -175,10 +175,10 @@ python pdf_mcp/cli.py from-md "notes.md" "Output.pdf" --theme emerald
 python pdf_mcp/cli.py generate "payload.json" "Report.pdf"
 
 # 3. Extract text from specific pages (pages 1 to 3)
-python pdf_mcp/cli.py read "slides.pdf" --start 1 --end 3
+python pdf_mcp/cli.py read "manual.pdf" --start 1 --end 3
 
 # 4. Batch-search across all PDFs in a folder
-python pdf_mcp/cli.py search "./slides" --pattern "L*.pdf" -q "ACID"
+python pdf_mcp/cli.py search "./docs" --pattern "*.pdf" -q "latency"
 
 # 5. Inspect PDF metadata
 python pdf_mcp/cli.py meta "document.pdf"
@@ -205,40 +205,39 @@ build_pdf_from_markdown(
 builder = PDFReportBuilder(header_title="Architecture Report", theme_name="slate")
 builder.draw_cover(
     title="SYSTEM ARCHITECTURE REPORT",
-    subtitle="Indexing & Query Optimization Analysis",
+    subtitle="Performance & Throughput Benchmarks",
     category="ENGINEERING",
-    description="Comparative analysis of B+ Tree and Hash indexing structures.",
-    metadata={"Author": "Ceyhun TUFAN", "Version": "1.1.0"}
+    description="Comparative analysis of distributed caching and message queue throughput.",
+    metadata={"Author": "Alex Rivera", "Version": "1.1.0"}
 )
 
 builder.add_page()
-builder.add_section_header("1. INDEX COMPARISON", "Time Complexity Breakdown")
+builder.add_section_header("1. BENCHMARK SUMMARY", "Throughput Under Load")
 builder.add_table(
-    headers=["Index Type", "Point Lookup", "Range Scan"],
+    headers=["Engine", "Read Latency", "Write Throughput"],
     rows=[
-        ["B+ Tree", "O(log N)", "Supported (Linked Leaves)"],
-        ["Hash Index", "O(1)", "Not Supported"]
+        ["In-Memory Cache", "0.4 ms", "120,000 ops/sec"],
+        ["Distributed Store", "2.1 ms", "45,000 ops/sec"]
     ]
 )
-builder.add_callout("Use B+ Tree indexes by default for general-purpose workloads.", kind="tip")
-builder.add_image("diagram.png", caption="Figure 1: PostgreSQL 8KB Page Layout")
+builder.add_callout("Enable connection pooling to prevent socket exhaustion under peak load.", kind="tip")
+builder.add_image("diagram.png", caption="Figure 1: Cluster Replication Flow")
 builder.output("Architecture_Report.pdf")
 ```
 
 ---
----
 
-<a name="-türkçe-dokümantasyon"></a>
+<a id="turkce-dokumantasyon"></a>
 
 # 🇹🇷 Türkçe Dokümantasyon
 
 <div align="right">
-  <a href="#-english-documentation">⬆️ Go to English Documentation</a>
+  <a href="#english-documentation">⬆️ Go to English Documentation</a>
 </div>
 
 **PDF-MCP**, yapay zeka kodlama asistanları (**Google Antigravity**, **Claude Desktop**, **Cursor**) ve geliştiriciler için tasarlanmış hafif, yüksek performanslı bir **Model Context Protocol (MCP)** sunucusu ve komut satırı (CLI) araç setidir.
 
-Ajanların PDF belgelerini okumasına, onlarca slayt/doküman içinde toplu arama yapmasına, iki PDF'i karşılaştırmasına ve **hiçbir ara JSON dönüştürücü script yazmaya gerek kalmadan doğrudan Markdown (`.md`) veya JSON üzerinden yayın kalitesinde A4 PDF raporlar** üretmesine olanak tanır.
+Ajanların PDF belgelerini okumasına, onlarca doküman içinde toplu arama yapmasına, iki PDF'i karşılaştırmasına ve **hiçbir ara JSON dönüştürücü script yazmaya gerek kalmadan doğrudan Markdown (`.md`) veya JSON üzerinden yayın kalitesinde A4 PDF raporlar** üretmesine olanak tanır.
 
 ---
 
@@ -259,7 +258,7 @@ Ajanların PDF belgelerini okumasına, onlarca slayt/doküman içinde toplu aram
 | **`pdf_from_markdown`** | ***(Yeni)*** `.md` dosyasını veya ham Markdown metnini doğrudan yayın kalitesinde PDF raporuna derler. |
 | **`pdf_generate_report`** | Yapılandırılmış JSON verisinden veya harici `input_file` dosyasından (`qa`, `table`, `callout`, `image`, `code`, `bullet`) PDF üretir. |
 | **`pdf_read_text`** | Tam belgeyi veya belirli sayfa aralıklarını (`start_page` - `end_page`) temiz metin olarak çıkarır. |
-| **`pdf_search_batch`** | Bir klasördeki onlarca PDF içinde (`*.pdf`, `L*.pdf`) anahtar kelime veya Regex araması yapar. |
+| **`pdf_search_batch`** | Bir klasördeki onlarca PDF içinde (`*.pdf`, `rapor_*.pdf`) anahtar kelime veya Regex araması yapar. |
 | **`pdf_get_metadata`** | Sayfa sayısı, dosya boyutu, başlık, yazar ve şifreleme durumunu döndürür. |
 | **`pdf_compare_files`** | İki PDF dosyasını sayfa sayfa karşılaştırarak metin farklarını tespit eder. |
 | **Tam Türkçe / UTF-8** | `Arial`, `Calibri`, `Segoe UI`, `Consolas` ve `DejaVu` TrueType fontlarıyla `ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş` karakterlerini kusursuz işler. |
@@ -286,7 +285,7 @@ pip install -e .
 
 ### 2. MCP Sunucu Kurulumu
 
-#### Google Antigravity (`C:\Users\<KullanıcıAdı>\.gemini\config\mcp_config.json`)
+#### Google Antigravity (`~/.gemini/config/mcp_config.json`)
 ```json
 {
   "mcpServers": {
@@ -317,7 +316,7 @@ pip install -e .
 
 ---
 
-## ⚡ Anlık Kullanım Rehberi (Markdown $\rightarrow$ PDF)
+## ⚡ Anlık Kullanım Rehberi (Markdown → PDF)
 
 ### Senaryo: Markdown Dosyasından Tek Adımda PDF Üretimi (Tavsiye Edilen)
 
@@ -325,40 +324,40 @@ Herhangi bir `.md` dosyası oluşturun. YAML başlığı (frontmatter) ile kapak
 
 ````markdown
 ---
-title: VERİTABANI YÖNETİM SİSTEMLERİ
-subtitle: Çıkmış Sınav Soruları ve Çözüm Rehberi
-category: DERS NOTLARI
-description: Bu doküman L01-L12 vize ve final sorularının detaylı çözümlerini içerir.
+title: BULUT ALTYAPI VE PERFORMANS RAPORU
+subtitle: 4. Çeyrek Güvenlik, Gecikme ve Ölçeklenebilirlik Analizi
+category: TEKNİK RAPOR
+description: Dağıtık mikroservislerin ve depolama katmanlarının kapsamlı mimari değerlendirmesi.
 theme: navy_blue
-Ders Sorumlusu: Doç. Dr. Ahmet Arif AYDIN
-Hazırlayan: Ceyhun TUFAN
+Birim: Platform Mühendisliği Ekibi
+Hazırlayan: Deniz Yılmaz
 Tarih: 2026
 ---
 
-# BÖLÜM 1: TEMEL KAVRAMLAR VE ER MODELİ
+# BÖLÜM 1: SERVİS MİMARİSİ VE GECİKME ANALİZİ
 
-## Soru 1.1: Veri Bağımsızlığı (Data Independence) nedir?
-Veritabanının fiziksel veya mantıksal şemasında yapılan değişikliklerin üst katmandaki uygulama programlarını etkilememesidir.
+## Soru 1.1: Uç önbellekleme (Edge Caching) yanıt sürelerini nasıl etkiler?
+Bölgesel önbellek sunucuları, statik ve sık erişilen verileri istemciye en yakın noktadan sunarak ağ gecikmesini minimuma indirir.
 
-> [!IMPORTANT] Kritik Kural
-> Başvuru bütünlüğü (Referential Integrity) gereği yabancı anahtar ile bağlı bir kayıt silinmeden önce bağımlı satırlar temizlenmelidir.
+> [!IMPORTANT] Hız Sınırlandırma (Rate Limiting) Kuralı
+> Tüm dışa açık API uç noktalarında üretim ortamına geçilmeden önce API Gateway katmanında istek sınırlandırma aktif edilmelidir.
 
-- **Mantıksal Veri Bağımsızlığı:** Kavramsal şema değişikliklerinden dış şemaları korur.
-- **Fiziksel Veri Bağımsızlığı:** Disk ve indeks değişikliklerinden kavramsal şemayı korur.
+- **API Geçidi:** TLS sonlandırma ve yük dengeleme işlemlerini yürütür.
+- **İşçi Havuzu (Worker Pool):** Asenkron arka plan görevlerini otomatik yeniden deneme mekanizmasıyla işler.
 
 ```sql
-SELECT o.ogrenciadi, COUNT(k.derskodu) AS ders_sayisi
-FROM ogrenci o
-JOIN kayit k ON o.ogrencino = k.ogrencino
-GROUP BY o.ogrenciadi;
+SELECT servis_adi, AVG(gecikme_ms) AS ortalama_gecikme
+FROM sistem_kayitlari
+WHERE durum_kodu = 200
+GROUP BY servis_adi;
 ```
 
-| Ders Kodu | Ders Adı | Öğrenci Sayısı |
+| Servis Kodu | Bileşen Adı | Çalışma Süresi (SLA) |
 | :--- | :--- | :--- |
-| BM335 | Veritabanı Yönetim Sistemleri | 2 |
-| BM315 | Programlama Dilleri | 3 |
+| SRV-101 | Kimlik Doğrulama Geçidi | 99.99% |
+| SRV-204 | Ödeme Motoru | 99.95% |
 
-![Üniversite ER Modeli](raporlar/ermodel.drawio.png)
+![Sistem Topoloji Diyagramı](assets/topoloji.png)
 ````
 
 #### MCP Aracı İle Çağrımı (`pdf_from_markdown`):
@@ -376,8 +375,8 @@ GROUP BY o.ogrenciadi;
 | `--- ... ---` (YAML Frontmatter) | Kapak sayfası başlığı, alt başlığı, özet kutusu, tema ve alt bilgi metaverileri |
 | `# BÖLÜM 1: ...` | Tam genişlikte renkli Bölüm Başlığı (`add_section_header`) |
 | `## Soru 1: ...` veya `### ...` | Sol şeritli, gölgeli Soru-Cevap Kartı (`add_qa`) ve takip eden cevap metni |
-| ` ```sql ... ``` ` | Monospace fontlu, çerçeveli Kod Bloğu (`add_code_block`) |
-| `\| Sütun 1 \| Sütun 2 \|` | Zebra desenli, renkli başlıklı Tablo (`add_table`) |
+| ```` ```sql ... ``` ```` | Monospace fontlu, çerçeveli Kod Bloğu (`add_code_block`) |
+| `&#124; Sütun 1 &#124; Sütun 2 &#124;` | Zebra desenli, renkli başlıklı Tablo (`add_table`) |
 | `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` | Renkli Uyarı / Bilgi Paneli (`add_callout`) |
 | `![Alt Yazı](resim/yolu.png)` | Ortalanmış, ölçeklenmiş Görsel ve İtalik Alt Yazı (`add_image`) |
 | `- **Başlık:** Açıklama` | Kalın başlıklı Madde İmi (`add_bullet`) |
@@ -394,16 +393,16 @@ python pdf_mcp/cli.py from-md "notlar.md" "Cikti.pdf" --theme emerald
 python pdf_mcp/cli.py generate "payload.json" "Rapor.pdf"
 
 # 3. PDF'ten belirli sayfa aralığını oku (1-3. sayfalar)
-python pdf_mcp/cli.py read "slayt.pdf" --start 1 --end 3
+python pdf_mcp/cli.py read "kilavuz.pdf" --start 1 --end 3
 
-# 4. Klasördeki tüm PDF slaytlarında kelime ara
-python pdf_mcp/cli.py search "./DersNotlari" --pattern "L*.pdf" -q "ACID"
+# 4. Klasördeki tüm PDF belgelerinde kelime ara
+python pdf_mcp/cli.py search "./Belgeler" --pattern "*.pdf" -q "performans"
 
 # 5. PDF teknik bilgilerini görüntüle
 python pdf_mcp/cli.py meta "dokuman.pdf"
 
 # 6. İki PDF dosyasını karşılaştır
-python pdf_mcp/cli.py diff "eski.pdf" "yeni.pdf"
+python pdf_mcp/cli.py diff "v1.pdf" "v2.pdf"
 ```
 
 ---
@@ -424,23 +423,23 @@ build_pdf_from_markdown(
 builder = PDFReportBuilder(header_title="Teknik Rapor", theme_name="slate")
 builder.draw_cover(
     title="SİSTEM MİMARİSİ RAPORU",
-    subtitle="Performans ve İndeksleme Analizi",
+    subtitle="Performans ve Yük Testi Analizi",
     category="MÜHENDİSLİK",
-    description="B+ Ağacı ve Hash İndeks karşılaştırması.",
-    metadata={"Yazar": "Ceyhun TUFAN", "Sürüm": "1.1.0"}
+    description="Dağıtık önbellek ve mesaj kuyruğu sistemlerinin karşılaştırmalı analizi.",
+    metadata={"Hazırlayan": "Deniz Yılmaz", "Sürüm": "1.1.0"}
 )
 
 builder.add_page()
-builder.add_section_header("1. İNDEKS KARŞILAŞTIRMASI", "Zaman Karmaşıklığı Analizi")
+builder.add_section_header("1. PERFORMANS ÖZETİ", "Yük Altında Tepki Süreleri")
 builder.add_table(
-    headers=["İndeks Türü", "Eşitlik Arama", "Aralık Sorgusu"],
+    headers=["Motor Türü", "Okuma Gecikmesi", "Yazma Kapasitesi"],
     rows=[
-        ["B+ Ağacı", "O(log N)", "Destekler (Sıralı Yapraklar)"],
-        ["Hash İndeks", "O(1)", "Desteklemez"]
+        ["Bellek İçi Önbellek", "0.4 ms", "120,000 işlem/sn"],
+        ["Dağıtık Depolama", "2.1 ms", "45,000 işlem/sn"]
     ]
 )
-builder.add_callout("Genel amaçlı sorgularda varsayılan olarak B+ Ağacı tercih edilmelidir.", kind="tip")
-builder.add_image("diyagram.png", caption="Şekil 1: Sayfa İçi Yerleşim")
+builder.add_callout("Yoğun trafik altında soket tükenmesini önlemek için bağlantı havuzu (connection pool) kullanılmalıdır.", kind="tip")
+builder.add_image("diyagram.png", caption="Şekil 1: Küme Replikasyon Akışı")
 builder.output("Mimari_Rapor.pdf")
 ```
 

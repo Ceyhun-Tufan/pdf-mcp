@@ -24,15 +24,15 @@ class TestPDFReader(unittest.TestCase):
     def setUpClass(cls):
         cls.sample_pdf = os.path.join(cur_dir, "fixture_sample.pdf")
         md_fixture = """---
-title: Veritabanı Yönetim Sistemleri Test Dokümanı
+title: Sistem Mimarisi Test Dokümanı
 subtitle: Otomatik Test Verisi
 category: TEST
 ---
 
-# BÖLÜM 1: VERİTABANI TEMELLERİ
+# BÖLÜM 1: MİMARİ TEMELLER
 
-## Soru 1: Veritabanı nedir?
-Veritabanı, yapılandırılmış verilerin düzenli olarak saklandığı sistemdir. SQL sorguları ile yönetilir.
+## Soru 1: Mikroservis nedir?
+Mikroservis mimarisi, uygulamaların bağımsız dağıtılabilir servisler halinde yapılandırıldığı sistemdir.
 """
         build_pdf_from_markdown(output_path=cls.sample_pdf, markdown_text=md_fixture)
 
@@ -51,10 +51,10 @@ Veritabanı, yapılandırılmış verilerin düzenli olarak saklandığı sistem
         res = extract_pdf_text(self.sample_pdf, start_page=1, end_page=2)
         self.assertEqual(res["extracted_page_count"], 2)
         self.assertIn("full_text", res)
-        self.assertIn("Veritabanı", res["full_text"])
+        self.assertIn("Mikroservis", res["full_text"])
 
     def test_search(self):
-        res = search_pdfs(cur_dir, pattern="fixture_*.pdf", query="Veritabanı")
+        res = search_pdfs(cur_dir, pattern="fixture_*.pdf", query="Mikroservis")
         self.assertGreater(res["scanned_files_count"], 0)
         self.assertGreater(res["pages_with_matches"], 0)
 
@@ -95,21 +95,21 @@ class TestPDFWriter(unittest.TestCase):
                         },
                         {
                             "type": "code",
-                            "code": "SELECT * FROM test WHERE id = 1;"
+                            "code": "SELECT * FROM services WHERE active = true;"
                         },
                         {
                             "type": "table",
                             "headers": ["Sütun A", "Sütun B", "Açıklama"],
                             "rows": [
-                                ["1", "BM335", "Veritabanı Yönetim Sistemleri"],
-                                ["2", "BM101", "Bilgisayar Mühendisliğine Giriş"]
+                                ["1", "SVC-01", "Kimlik Doğrulama Servisi"],
+                                ["2", "SVC-02", "Ödeme Ağ Geçidi"]
                             ]
                         },
                         {
                             "type": "callout",
                             "kind": "tip",
                             "title": "PERFORMANS İPUCU",
-                            "text": "İndeks kullanımı sorgu süresini O(log N) seviyesine indirir."
+                            "text": "Önbellek kullanımı sorgu süresini milisaniye seviyesine indirir."
                         },
                         {
                             "type": "image",
@@ -134,28 +134,28 @@ title: Markdown Derleyici Testi
 subtitle: Otomatik AST ve PDF Üretimi
 category: MÜHENDİSLİK RAPORU
 theme: emerald
-Yazar: Ceyhun TUFAN
+Yazar: Test Engineer
 ---
 
 # BÖLÜM 1: TEMEL SÖZDİZİMİ
 
-## Soru 1.1: İlişkisel Cebir nedir?
-İlişkisel cebir, ilişkisel tablolar üzerinde çalışan yordamsal sorgu dilidir.
+## Soru 1.1: Yük Dengeleme nedir?
+Yük dengeleme, gelen ağ trafiğini birden fazla sunucuya dağıtan mekanizmadır.
 
 > [!NOTE] Önemli Not
-> Seçme ve izdüşüm operatörleri sorgu ağacında yapraklara itilir.
+> Sağlık kontrolleri (health checks) başarısız olan düğümler havuzdan çıkarılır.
 
-- **Seçme (Selection):** Satırları filtreler.
-- **İzdüşüm (Projection):** Sütunları seçer.
+- **Katman 4:** Taşıma katmanı yük dengeleme.
+- **Katman 7:** Uygulama katmanı yük dengeleme.
 
 ```sql
-SELECT ogrenciadi, yas FROM ogrenci WHERE yas > 18;
+SELECT service_name, status FROM nodes WHERE healthy = true;
 ```
 
-| Ders Kodu | Ders Adı | Öğrenci Sayısı |
+| Servis Kodu | Servis Adı | Durum |
 | :--- | :--- | :--- |
-| BM335 | Veritabanı Yönetim Sistemleri | 2 |
-| BM315 | Programlama Dilleri | 3 |
+| SRV-01 | API Gateway | Aktif |
+| SRV-02 | Auth Service | Aktif |
 """
         parsed = parse_markdown_to_doc_data(md_content)
         self.assertEqual(parsed["title"], "Markdown Derleyici Testi")
