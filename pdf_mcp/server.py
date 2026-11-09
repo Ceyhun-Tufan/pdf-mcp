@@ -36,7 +36,7 @@ except (ImportError, ValueError):
 
 SERVER_INFO = {
     "name": "pdf-toolkit-mcp",
-    "version": "1.1.0",
+    "version": "1.2.0",
 }
 
 PROTOCOL_VERSION = "2024-11-05"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf-mcp"
-version = "1.1.0"
+version = "1.2.0"
 description = "A Model Context Protocol (MCP) Server and CLI Toolkit for reading, searching, comparing, and generating publication-grade styled PDF documents."
 readme = "README.md"
 authors = [{ name = "Ceyhun" }]

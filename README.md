@@ -1,11 +1,11 @@
-# PDF-MCP (v1.1.0): Model Context Protocol (MCP) Server & CLI Toolkit
+# PDF-MCP (v1.2.0): Model Context Protocol (MCP) Server & CLI Toolkit
 
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compliant](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io/)
-[![Version 1.1.0](https://img.shields.io/badge/version-1.1.0-emerald.svg)]()
+[![Version 1.2.0](https://img.shields.io/badge/version-1.2.0-emerald.svg)]()
 
 ### 🌐 [**🇬🇧 English Documentation**](#english-documentation) &nbsp;|&nbsp; [**🇹🇷 Türkçe Dokümantasyon**](#turkce-dokumantasyon)
 
@@ -19,13 +19,16 @@
 
 **PDF-MCP** is a lightweight, high-performance **Model Context Protocol (MCP)** server and command-line (CLI) toolkit designed for AI coding assistants (**Google Antigravity**, **Claude Desktop**, **Cursor**) and developers.
 
-It empowers AI agents to natively inspect, batch-search, and diff PDF documents, as well as compile **publication-grade A4 PDF reports directly from Markdown (`.md`) or structured JSON**—complete with cover pages, Q&A cards, code blocks, zebra-striped tables, callout alerts, embedded diagrams, and full UTF-8/Unicode typography support—without writing intermediate dump scripts.
+It empowers AI agents to natively inspect, batch-search, and diff PDF documents, as well as compile **publication-grade A4 PDF reports directly from Markdown (`.md`) or structured JSON**—complete with cover pages, Q&A cards, LaTeX mathematical equations, code blocks, zebra-striped tables, callout alerts, embedded diagrams, and full UTF-8/Unicode typography support—without writing intermediate dump scripts.
 
 ---
 
-## 🆕 What's New in v1.1.0
+## 🆕 What's New in v1.2.0
 
-- **📝 Markdown-First PDF Compiler (`pdf_from_markdown`)**: Pass a standard Markdown file or string; the engine automatically compiles YAML frontmatter, `#` sections, `##` Q&A cards, fenced code blocks, Markdown tables, `> [!NOTE]` callouts, and `![caption](img)` figures into a styled PDF.
+- **📐 Native LaTeX Math & Equation Rendering (`math`)**: High-resolution 300 DPI mathematical typography rendered via `matplotlib.mathtext` without requiring external TeX distributions (TeX Live/MiKTeX). Supports block formulas (`$$...$$`, `\[...\]`, ```` ```math ````) into styled cards with labels/captions, plus automatic inline math conversion (`$E=mc^2$`, `\alpha`, `\sum`, `\int`, `\frac{a}{b}`) into clean Unicode typography.
+- **🛡️ Bulletproof Box Overflow & Overlap Prevention**: Replaced naive line estimation with exact dynamic measurement (`multi_cell(..., dry_run=True, output=MethodReturnValue.HEIGHT)`). Callouts, Q&A cards, and cover descriptions dynamically expand to fit text perfectly, eliminating content truncation and text collisions.
+- **📜 Smart Code Block Wrapping & Pagination**: Long code lines soft-wrap cleanly with indentation without clipping margins; multi-page code blocks gracefully split across page boundaries with individual boxed containers.
+- **📝 Markdown-First PDF Compiler (`pdf_from_markdown`)**: Pass a standard Markdown file or string; the engine automatically compiles YAML frontmatter, `#` sections, `##` Q&A cards, LaTeX equations, fenced code blocks, Markdown tables, `> [!NOTE]` callouts, and `![caption](img)` figures into a styled PDF.
 - **📊 Native Styled Table Engine (`table`)**: Automatic column sizing, primary-colored headers, and alternating row backgrounds (zebra striping).
 - **💡 Rich Alert / Callout Boxes (`callout`)**: Left-accented callout panels for `NOTE`, `TIP`, `WARNING`, `IMPORTANT`, and `CAUTION`.
 - **🖼️ Smart Image & Diagram Embedding (`image`)**: Aspect-ratio preserving centered image rendering with italic captions and graceful fallback placeholders if an image path is missing.
@@ -37,13 +40,13 @@ It empowers AI agents to natively inspect, batch-search, and diff PDF documents,
 
 | Tool Name | Description |
 | :--- | :--- |
-| **`pdf_from_markdown`** | ***(New)*** Compiles a `.md` file or raw Markdown string directly into a publication-grade styled PDF report. |
-| **`pdf_generate_report`** | Builds a styled PDF from structured JSON data or an external `input_file` (`qa`, `table`, `callout`, `image`, `code`, `bullet`). |
+| **`pdf_from_markdown`** | Compiles a `.md` file or raw Markdown string directly into a publication-grade styled PDF report with LaTeX math support. |
+| **`pdf_generate_report`** | Builds a styled PDF from structured JSON data or an external `input_file` (`qa`, `math`, `table`, `callout`, `image`, `code`, `bullet`). |
 | **`pdf_read_text`** | Extracts clean text from an entire PDF or specific page ranges (`start_page` - `end_page`, 1-based). |
 | **`pdf_search_batch`** | Rapidly searches across dozens of PDFs in a directory (`*.pdf`, `report_*.pdf`) using keywords or regular expressions. |
 | **`pdf_get_metadata`** | Retrieves total page count, file size, title, author, and encryption status. |
 | **`pdf_compare_files`** | Compares two PDF files page-by-page to pinpoint textual differences. |
-| **Full Unicode / Turkish** | Native TrueType font support (`Arial`, `Calibri`, `Segoe UI`, `Consolas`, `DejaVu`) for flawless international and Turkish (`ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş`) rendering. |
+| **Full Unicode & Math** | Native TrueType font support (`Arial`, `Calibri`, `Segoe UI`, `Consolas`, `DejaVu`) for international characters, Turkish (`ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş`), and mathematical symbols. |
 
 ---
 
@@ -51,7 +54,7 @@ It empowers AI agents to natively inspect, batch-search, and diff PDF documents,
 
 ### 1. Install Dependencies
 
-PDF-MCP requires only two lightweight packages (`pypdf` and `fpdf2`):
+PDF-MCP requires lightweight, zero-system-overhead Python packages (`pypdf`, `fpdf2`, `matplotlib`):
 
 ```bash
 git clone https://github.com/your-username/pdf-mcp.git
@@ -157,9 +160,11 @@ GROUP BY service_name;
 | `--- ... ---` (YAML Frontmatter) | Cover page title, subtitle, abstract box, color theme, and bottom metadata key-values |
 | `# SECTION 1: ...` | Full-width colored Section Header banner (`add_section_header`) |
 | `## Question 1: ...` or `## Soru 1: ...` | Left-accented shaded Q&A Card (`add_qa`) + subsequent paragraph as answer |
-| ```` ```sql ... ``` ```` | Shaded monospace Code Block (`add_code_block`) |
+| `$$ ... $$` or `\[ ... \]` or ```` ```math ```` | Standalone high-res LaTeX Mathematical Equation Card (`add_math`) with optional numbering |
+| `$E = mc^2$` or `\(...\)` | In-line smooth Unicode mathematical typography (Greek letters, symbols, roots, fractions) |
+| ```` ```sql ... ``` ```` | Shaded monospace Code Block with long-line soft-wrap (`add_code_block`) |
 | `&#124; Col 1 &#124; Col 2 &#124;` | Zebra-striped Table with primary-colored header (`add_table`) |
-| `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` | Styled Callout / Alert Box (`add_callout`) |
+| `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` | Dynamic-height Styled Callout / Alert Box without overflow (`add_callout`) |
 | `![Caption](path/to/img.png)` | Centered auto-scaled Image with italic caption (`add_image`) |
 | `- **Title:** Description` | Bold-prefixed Bullet Point (`add_bullet`) |
 
@@ -213,6 +218,7 @@ builder.draw_cover(
 
 builder.add_page()
 builder.add_section_header("1. BENCHMARK SUMMARY", "Throughput Under Load")
+builder.add_math(r"\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}", caption="Gaussian Integral", label="1.1")
 builder.add_table(
     headers=["Engine", "Read Latency", "Write Throughput"],
     rows=[
@@ -241,9 +247,12 @@ Ajanların PDF belgelerini okumasına, onlarca doküman içinde toplu arama yapm
 
 ---
 
-## 🆕 v1.1.0 ile Gelen Yenilikler
+## 🆕 v1.2.0 ile Gelen Yenilikler
 
-- **📝 Markdown-First PDF Derleyici (`pdf_from_markdown`)**: Ajan veya kullanıcı standart bir Markdown metni/dosyası verir; sistem otomatik olarak kapak sayfası, bölüm başlıkları, soru-cevap kartları, kod blokları, tablolar, uyarı kutuları ve görseller içeren şık bir PDF üretir.
+- **📐 Yerleşik LaTeX Matematik ve Denklem Motoru (`math`)**: Harici bir TeX dağıtımına (TeX Live/MiKTeX) ihtiyaç duymadan `matplotlib.mathtext` ile 300 DPI çözünürlükte matematiksel formül render desteği. Blok denklemleri (`$$...$$`, `\[...\]`, ```` ```math ````) şık denklem kartlarına çevirir; satır içi matematik ifadelerini (`$E=mc^2$`, `\alpha`, `\sum`, `\int`, `\frac{a}{b}`) pürüzsüz Unicode karakterlere dönüştürür.
+- **🛡️ Kutu Taşma ve Üst Üste Binme (Overlap) Çözümü**: Kaba satır tahminleri kaldırılarak `fpdf2`'nin `multi_cell(..., dry_run=True, output=MethodReturnValue.HEIGHT)` özelliğiyle piksel hassasiyetinde dinamik yükseklik ölçümüne geçildi. Çağrı kutuları (callout), soru-cevap kartları ve kapak özetleri metnin gerçek boyutuna göre esner; metin taşması veya bir sonraki paragrafın üstüne binme sorunları tamamen ortadan kaldırıldı.
+- **📜 Kod Bloklarında Akıllı Satır Kaydırma ve Sayfalama**: 162 mm'yi aşan uzun kod satırları marjinden taşmayacak şekilde girintili olarak yumuşak sarılır (soft-wrap); sayfaları aşan kod blokları sayfa kırılımlarında parçalı çerçevelerle bölünür.
+- **📝 Markdown-First PDF Derleyici (`pdf_from_markdown`)**: Ajan veya kullanıcı standart bir Markdown metni/dosyası verir; sistem otomatik olarak kapak sayfası, bölüm başlıkları, soru-cevap kartları, LaTeX denklemleri, kod blokları, tablolar, uyarı kutuları ve görseller içeren şık bir PDF üretir.
 - **📊 Yerleşik Stilize Tablo Motoru (`table`)**: Tema renkli başlık satırı, zebra desenli (alternatif satır dolgulu) ve otomatik metin kaydırmalı tablolar.
 - **💡 Renkli Uyarı / Bilgi Panelleri (`callout`)**: `NOTE`, `TIP`, `WARNING`, `IMPORTANT`, `CAUTION` tiplerinde sol kenarı renk şeritli vurgu kutuları.
 - **🖼️ Akıllı Görsel ve Diyagram Gömme (`image`)**: En-boy oranını (aspect ratio) koruyarak ortalanmış resim/diyagram ekleme, alt yazı (`caption`) desteği ve eksik görsellerde çökmeyi önleyen hata toleranslı yer tutucu (fallback).
@@ -255,13 +264,13 @@ Ajanların PDF belgelerini okumasına, onlarca doküman içinde toplu arama yapm
 
 | Özellik / Araç | Açıklama |
 | :--- | :--- |
-| **`pdf_from_markdown`** | ***(Yeni)*** `.md` dosyasını veya ham Markdown metnini doğrudan yayın kalitesinde PDF raporuna derler. |
-| **`pdf_generate_report`** | Yapılandırılmış JSON verisinden veya harici `input_file` dosyasından (`qa`, `table`, `callout`, `image`, `code`, `bullet`) PDF üretir. |
+| **`pdf_from_markdown`** | `.md` dosyasını veya ham Markdown metnini LaTeX matematik desteğiyle doğrudan yayın kalitesinde PDF raporuna derler. |
+| **`pdf_generate_report`** | Yapılandırılmış JSON verisinden veya harici `input_file` dosyasından (`qa`, `math`, `table`, `callout`, `image`, `code`, `bullet`) PDF üretir. |
 | **`pdf_read_text`** | Tam belgeyi veya belirli sayfa aralıklarını (`start_page` - `end_page`) temiz metin olarak çıkarır. |
 | **`pdf_search_batch`** | Bir klasördeki onlarca PDF içinde (`*.pdf`, `rapor_*.pdf`) anahtar kelime veya Regex araması yapar. |
 | **`pdf_get_metadata`** | Sayfa sayısı, dosya boyutu, başlık, yazar ve şifreleme durumunu döndürür. |
 | **`pdf_compare_files`** | İki PDF dosyasını sayfa sayfa karşılaştırarak metin farklarını tespit eder. |
-| **Tam Türkçe / UTF-8** | `Arial`, `Calibri`, `Segoe UI`, `Consolas` ve `DejaVu` TrueType fontlarıyla `ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş` karakterlerini kusursuz işler. |
+| **Tam Türkçe ve Matematik** | `Arial`, `Calibri`, `Segoe UI`, `Consolas` ve `DejaVu` TrueType fontlarıyla `ç, ğ, ı, ö, ş, ü, İ, Ğ, Ş` karakterlerini ve zengin matematik sembollerini kusursuz işler. |
 
 ---
 
@@ -269,7 +278,7 @@ Ajanların PDF belgelerini okumasına, onlarca doküman içinde toplu arama yapm
 
 ### 1. Gereksinimlerin Kurulması
 
-Proje yalnızca iki hafif kütüphaneye (`pypdf` ve `fpdf2`) ihtiyaç duyar:
+Proje hafif ve sistem bağımsız kütüphanelere (`pypdf`, `fpdf2`, `matplotlib`) ihtiyaç duyar:
 
 ```bash
 git clone https://github.com/your-username/pdf-mcp.git
@@ -375,9 +384,11 @@ GROUP BY servis_adi;
 | `--- ... ---` (YAML Frontmatter) | Kapak sayfası başlığı, alt başlığı, özet kutusu, tema ve alt bilgi metaverileri |
 | `# BÖLÜM 1: ...` | Tam genişlikte renkli Bölüm Başlığı (`add_section_header`) |
 | `## Soru 1: ...` veya `### ...` | Sol şeritli, gölgeli Soru-Cevap Kartı (`add_qa`) ve takip eden cevap metni |
-| ```` ```sql ... ``` ```` | Monospace fontlu, çerçeveli Kod Bloğu (`add_code_block`) |
+| `$$ ... $$` veya `\[ ... \]` veya ```` ```math ```` | Yüksek çözünürlüklü LaTeX Matematik Denklem Kartı (`add_math`) |
+| `$E = mc^2$` veya `\(...\)` | Paragraf içi pürüzsüz Unicode matematik tipografisi (Yunan harfleri, semboller, kesirler) |
+| ```` ```sql ... ``` ```` | Monospace fontlu, uzun satır kaydırmalı (soft-wrap) Kod Bloğu (`add_code_block`) |
 | `&#124; Sütun 1 &#124; Sütun 2 &#124;` | Zebra desenli, renkli başlıklı Tablo (`add_table`) |
-| `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` | Renkli Uyarı / Bilgi Paneli (`add_callout`) |
+| `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]` | Dinamik yükseklikli, taşma korumalı Renkli Uyarı / Bilgi Paneli (`add_callout`) |
 | `![Alt Yazı](resim/yolu.png)` | Ortalanmış, ölçeklenmiş Görsel ve İtalik Alt Yazı (`add_image`) |
 | `- **Başlık:** Açıklama` | Kalın başlıklı Madde İmi (`add_bullet`) |
 
@@ -431,6 +442,7 @@ builder.draw_cover(
 
 builder.add_page()
 builder.add_section_header("1. PERFORMANS ÖZETİ", "Yük Altında Tepki Süreleri")
+builder.add_math(r"\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}", caption="Gauss İntegrali", label="1.1")
 builder.add_table(
     headers=["Motor Türü", "Okuma Gecikmesi", "Yazma Kapasitesi"],
     rows=[
