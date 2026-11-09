@@ -314,6 +314,69 @@ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
         if os.path.exists(test_fallback_pdf):
             os.remove(test_fallback_pdf)
 
+    def test_multipage_header_and_subheading_no_collision(self):
+        from pypdf import PdfReader
+        test_multi_pdf = os.path.join(cur_dir, "test_multi_collision.pdf")
+        md_text = """---
+title: Sayfalama ve Baslik Cakisma Testi
+subtitle: Header ve Margin Guvencesi
+category: TEST
+---
+
+# BOLUM 1: GIRIS
+
+### Alt Baslik 1.1
+Bu bir alt baslik ornegidir. QA karti olmamali, baslik olarak basilmalidir.
+
+```sql
+SELECT
+    id, name, region, status, cpu, memory, latency, timestamp
+FROM microservices_cluster_database_nodes
+WHERE env = 'prod'
+ORDER BY latency DESC;
+```
+
+### Alt Baslik 1.2
+```sql
+SELECT node_id, count(*) FROM pods GROUP BY node_id;
+SELECT service_name, endpoint, port, health FROM microservices_production_registry;
+```
+"""
+        parsed = parse_markdown_to_doc_data(md_text)
+        subheads = [it for it in parsed["sections"][0]["items"] if it.get("type") == "subheading"]
+        self.assertEqual(len(subheads), 2)
+        self.assertEqual(subheads[0]["title"], "Alt Baslik 1.1")
+
+        out = build_pdf_from_markdown(output_path=test_multi_pdf, markdown_text=md_text)
+        self.assertTrue(os.path.exists(out))
+
+        reader = PdfReader(test_multi_pdf)
+        for p_idx, page in enumerate(reader.pages):
+            p_num = p_idx + 1
+            if p_num == 1:
+                continue
+            elements = []
+            def visitor(text, cm, tm, font_dict, font_size):
+                clean = text.strip()
+                if clean:
+                    y_mm = (841.89 - tm[5]) * 25.4 / 72.0
+                    elements.append((y_mm, clean))
+            page.extract_text(visitor_text=visitor)
+
+            for y_mm, text in elements:
+                # Running header must stay inside top margin (y < 20mm)
+                # Body content must never overlap divider line (19mm) or invade margin (must be y >= 28mm)
+                is_header = "Sayfalama" in text or "Sayfa" in text or y_mm < 20.0
+                if not is_header:
+                    self.assertGreaterEqual(
+                        y_mm,
+                        28.0,
+                        f"Element '{text}' on page {p_num} placed at y={y_mm:.2f}mm which overlaps header zone!"
+                    )
+
+        if os.path.exists(test_multi_pdf):
+            os.remove(test_multi_pdf)
+
 
 if __name__ == "__main__":
     unittest.main()

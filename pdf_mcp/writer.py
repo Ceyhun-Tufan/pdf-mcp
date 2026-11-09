@@ -255,8 +255,8 @@ class PDFReportBuilder(FPDF):
 
     def __init__(self, header_title: str = "Doküman Raporu", theme_name: str = "navy_blue"):
         super().__init__(orientation="P", unit="mm", format="A4")
-        self.set_margins(18, 20, 18)
-        self.set_auto_page_break(auto=True, margin=20)
+        self.set_margins(18, 28, 18)
+        self.set_auto_page_break(auto=True, margin=22)
         self.header_title = header_title
         self.theme = THEMES.get(theme_name, THEMES["navy_blue"])
         self.is_cover = True
@@ -307,13 +307,21 @@ class PDFReportBuilder(FPDF):
     def header(self):
         if self.is_cover:
             return
-        self.set_font(self.font_sans, "I", 8)
+        self.set_xy(18, 11)
+        self.set_font(self.font_sans, "I", 8.5)
         self.set_text_color(115, 125, 140)
-        self.cell(0, 6, self.header_title, border=0, align="L")
+        # Constrain header title to avoid overflowing right margin
+        max_w = 174.0
+        h_title = self.header_title
+        while self.get_string_width(h_title) > 170.0 and len(h_title) > 5:
+            h_title = h_title[:-1]
+        if len(h_title) < len(self.header_title):
+            h_title = h_title.rstrip() + "..."
+        self.cell(max_w, 5, h_title, border=0, align="L")
         self.set_draw_color(215, 220, 230)
         self.set_line_width(0.3)
-        self.line(18, 27, 192, 27)
-        self.ln(4)
+        self.line(18, 19, 192, 19)
+        self.set_y(28)
 
     def footer(self):
         if self.is_cover:
@@ -329,8 +337,9 @@ class PDFReportBuilder(FPDF):
         self.cell(0, 8, f"Sayfa {self.page_no()} / {{nb}}", align="R")
 
     def check_page_break(self, height: float):
-        if self.get_y() + height > 275:
+        if self.get_y() + height > 272:
             self.add_page()
+            self.set_y(28)
 
     def draw_cover(
         self,
@@ -426,6 +435,7 @@ class PDFReportBuilder(FPDF):
                 self.cell(0, 6.5, str(v), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
         self.set_left_margin(18)
+        self.set_margins(18, 28, 18)
         self.is_cover = False
 
     def add_section_header(self, title: str, subtitle: str = ""):
@@ -448,7 +458,8 @@ class PDFReportBuilder(FPDF):
         banner_h = max(11.0, title_h + 4.0)
 
         self.check_page_break(banner_h + (8.0 if subtitle else 4.0))
-        self.ln(5)
+        if self.get_y() > 28.5:
+            self.ln(5)
         cur_y = self.get_y()
 
         p_r, p_g, p_b = self.theme["primary"]
@@ -466,6 +477,18 @@ class PDFReportBuilder(FPDF):
             self.set_text_color(70, 85, 105)
             self.cell(0, 5, subtitle, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.ln(2)
+
+    def add_subheading(self, title: str):
+        """Render a section subheading (Markdown level 3/4 header)."""
+        title = _convert_inline_latex(title)
+        self.check_page_break(12.0)
+        if self.get_y() > 28.5:
+            self.ln(3.5)
+        self.set_font(self.font_sans, "B", 10.5)
+        p_r, p_g, p_b = self.theme["primary"]
+        self.set_text_color(p_r, p_g, p_b)
+        self.cell(0, 5.5, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.ln(1.5)
 
     def add_qa(self, q_num: str, question: str, answer: str):
         question = _convert_inline_latex(question)
@@ -488,7 +511,8 @@ class PDFReportBuilder(FPDF):
         box_h = pad_y * 2 + text_h
 
         self.check_page_break(box_h + 4.0)
-        self.ln(2.5)
+        if self.get_y() > 28.5:
+            self.ln(2.5)
         cur_y = self.get_y()
 
         bg_r, bg_g, bg_b = self.theme["card_bg"]
@@ -516,6 +540,8 @@ class PDFReportBuilder(FPDF):
             bold_prefix = _convert_inline_latex(bold_prefix)
 
         self.check_page_break(12)
+        if self.get_y() > 28.5:
+            self.ln(2.0)
         self.set_font(self.font_sans, "", 9)
         t_r, t_g, t_b = self.theme["text_body"]
         self.set_text_color(t_r, t_g, t_b)
@@ -533,6 +559,8 @@ class PDFReportBuilder(FPDF):
         text = _convert_inline_latex(text)
 
         self.check_page_break(13)
+        if self.get_y() > 28.5:
+            self.ln(1.0)
         self.set_font(self.font_sans, "B", 9)
         p_r, p_g, p_b = self.theme["primary"]
         self.set_text_color(p_r, p_g, p_b)
@@ -592,8 +620,13 @@ class PDFReportBuilder(FPDF):
         # Check if entire block fits on current page; if not and fits on new page, break early
         total_h = len(formatted_lines) * line_h + pad_y * 2
         cur_y = self.get_y()
-        if cur_y + total_h > 275.0 and total_h <= 245.0:
+        if cur_y > 28.5:
+            self.ln(2.0)
+            cur_y = self.get_y()
+
+        if cur_y + total_h > 272.0 and total_h <= 240.0:
             self.add_page()
+            self.set_y(28)
             cur_y = self.get_y()
 
         # Render chunk by chunk so page breaks never split the rectangle awkwardly
@@ -601,12 +634,13 @@ class PDFReportBuilder(FPDF):
         n_lines = len(formatted_lines)
         while line_idx < n_lines:
             cur_y = self.get_y()
-            avail_h = 275.0 - cur_y
+            avail_h = 272.0 - cur_y
             lines_fit = int((avail_h - pad_y * 2) / line_h)
             if lines_fit < 1:
                 self.add_page()
+                self.set_y(28)
                 cur_y = self.get_y()
-                avail_h = 275.0 - cur_y
+                avail_h = 272.0 - cur_y
                 lines_fit = max(1, int((avail_h - pad_y * 2) / line_h))
 
             chunk = formatted_lines[line_idx : line_idx + lines_fit]
@@ -639,7 +673,8 @@ class PDFReportBuilder(FPDF):
 
         est_h = (len(rows) + 1) * 7 + 6
         self.check_page_break(min(est_h, 45))
-        self.ln(2)
+        if self.get_y() > 28.5:
+            self.ln(2.0)
 
         p_r, p_g, p_b = self.theme["primary"]
         bg_r, bg_g, bg_b = self.theme["card_bg"]
@@ -708,7 +743,8 @@ class PDFReportBuilder(FPDF):
         box_h = pad_y * 2 + title_h + gap + text_h
 
         self.check_page_break(box_h + 4.0)
-        self.ln(2.0)
+        if self.get_y() > 28.5:
+            self.ln(2.0)
         cur_y = self.get_y()
 
         bg_r, bg_g, bg_b = style["bg"]
@@ -779,7 +815,8 @@ class PDFReportBuilder(FPDF):
         card_w = 174.0
 
         self.check_page_break(card_h + 4.0)
-        self.ln(2.5)
+        if self.get_y() > 28.5:
+            self.ln(2.5)
         cur_y = self.get_y()
 
         c_bg_r, c_bg_g, c_bg_b = self.theme["card_bg"]
@@ -1125,27 +1162,30 @@ def parse_markdown_to_doc_data(
                     current_section = {"title": hdr_text, "subtitle": "", "items": []}
                     sections.append(current_section)
             else:
-                # Level 3 or 4 -> QA card or bold subheading
+                # Level 3 or 4 -> QA card (if question) or subheading
                 m_q = re.match(r"^(?:Soru|Question|Q)\s*([0-9A-Za-z._-]*)\s*[:.-]\s*(.+)$", hdr_text, re.IGNORECASE)
                 sec = ensure_section()
-                if m_q:
+                if m_q or hdr_text.strip().endswith("?"):
+                    if m_q:
+                        q_n = m_q.group(1).strip()
+                        q_t = m_q.group(2).strip()
+                    else:
+                        q_n = ""
+                        q_t = hdr_text
                     qa_item = {
                         "type": "qa",
-                        "q_num": m_q.group(1).strip(),
-                        "question": m_q.group(2).strip(),
+                        "q_num": q_n,
+                        "question": q_t,
                         "answer": "",
                         "_ans_lines": []
                     }
+                    sec["items"].append(qa_item)
+                    active_qa = qa_item
                 else:
-                    qa_item = {
-                        "type": "qa",
-                        "q_num": "",
-                        "question": hdr_text,
-                        "answer": "",
-                        "_ans_lines": []
-                    }
-                sec["items"].append(qa_item)
-                active_qa = qa_item
+                    sec["items"].append({
+                        "type": "subheading",
+                        "title": hdr_text
+                    })
 
             idx += 1
             continue
@@ -1288,6 +1328,8 @@ def build_pdf_document(doc_data: Dict[str, Any], output_path: str) -> str:
                     question=item.get("question", ""),
                     answer=item.get("answer", "")
                 )
+            elif item_type == "subheading":
+                builder.add_subheading(item.get("title", ""))
             elif item_type == "paragraph":
                 builder.add_paragraph(
                     text=item.get("text", ""),

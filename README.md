@@ -159,7 +159,8 @@ GROUP BY service_name;
 | :--- | :--- |
 | `--- ... ---` (YAML Frontmatter) | Cover page title, subtitle, abstract box, color theme, and bottom metadata key-values |
 | `# SECTION 1: ...` | Full-width colored Section Header banner (`add_section_header`) |
-| `## Question 1: ...` or `## Soru 1: ...` | Left-accented shaded Q&A Card (`add_qa`) + subsequent paragraph as answer |
+| `### Subheading` | Clean bold Subheading (`add_subheading`) |
+| `## Question 1: ...` or `### Question 1: ...` | Left-accented shaded Q&A Card (`add_qa`) + subsequent paragraph as answer |
 | `$$ ... $$` or `\[ ... \]` or ```` ```math ```` | Standalone high-res LaTeX Mathematical Equation Card (`add_math`) with optional numbering |
 | `$E = mc^2$` or `\(...\)` | In-line smooth Unicode mathematical typography (Greek letters, symbols, roots, fractions) |
 | ```` ```sql ... ``` ```` | Shaded monospace Code Block with long-line soft-wrap (`add_code_block`) |
@@ -383,7 +384,8 @@ GROUP BY servis_adi;
 | :--- | :--- |
 | `--- ... ---` (YAML Frontmatter) | Kapak sayfası başlığı, alt başlığı, özet kutusu, tema ve alt bilgi metaverileri |
 | `# BÖLÜM 1: ...` | Tam genişlikte renkli Bölüm Başlığı (`add_section_header`) |
-| `## Soru 1: ...` veya `### ...` | Sol şeritli, gölgeli Soru-Cevap Kartı (`add_qa`) ve takip eden cevap metni |
+| `### Alt Başlık` | Vurgulu, temiz Alt Başlık (`add_subheading`) |
+| `## Soru 1: ...` veya `### Soru 1: ...` | Sol şeritli, gölgeli Soru-Cevap Kartı (`add_qa`) ve takip eden cevap metni |
 | `$$ ... $$` veya `\[ ... \]` veya ```` ```math ```` | Yüksek çözünürlüklü LaTeX Matematik Denklem Kartı (`add_math`) |
 | `$E = mc^2$` veya `\(...\)` | Paragraf içi pürüzsüz Unicode matematik tipografisi (Yunan harfleri, semboller, kesirler) |
 | ```` ```sql ... ``` ```` | Monospace fontlu, uzun satır kaydırmalı (soft-wrap) Kod Bloğu (`add_code_block`) |
