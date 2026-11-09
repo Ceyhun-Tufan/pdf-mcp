@@ -9,16 +9,25 @@ bullet points, and cover pages.
 
 import os
 import re
+import io
 import json
+import logging
 from typing import Dict, List, Any, Optional, Tuple
 from fpdf import FPDF
-from fpdf.enums import XPos, YPos
+from fpdf.enums import XPos, YPos, MethodReturnValue
 from fpdf.fonts import FontFace
 
 try:
     from PIL import Image as PILImage
 except ImportError:
     PILImage = None
+
+try:
+    from matplotlib import mathtext
+except ImportError:
+    mathtext = None
+
+logger = logging.getLogger("pdf_mcp.writer")
 
 
 THEMES = {
@@ -92,6 +101,150 @@ CALLOUT_STYLES = {
         "default_title": "KRİTİK UYARI",
     },
 }
+
+GREEK_MAP = {
+    r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
+    r"\epsilon": "ε", r"\varepsilon": "ε", r"\zeta": "ζ", r"\eta": "η",
+    r"\theta": "θ", r"\vartheta": "ϑ", r"\iota": "ι", r"\kappa": "κ",
+    r"\lambda": "λ", r"\mu": "μ", r"\nu": "ν", r"\xi": "ξ",
+    r"\pi": "π", r"\rho": "ρ", r"\sigma": "σ", r"\tau": "τ",
+    r"\upsilon": "υ", r"\phi": "φ", r"\varphi": "ϕ", r"\chi": "χ",
+    r"\psi": "ψ", r"\omega": "ω",
+    r"\Gamma": "Γ", r"\Delta": "Δ", r"\Theta": "Θ", r"\Lambda": "Λ",
+    r"\Xi": "Ξ", r"\Pi": "Π", r"\Sigma": "Σ", r"\Upsilon": "Υ",
+    r"\Phi": "Φ", r"\Psi": "Ψ", r"\Omega": "Ω",
+}
+
+MATH_SYMBOL_MAP = {
+    r"\times": "×", r"\cdot": "·", r"\div": "÷", r"\pm": "±", r"\mp": "∓",
+    r"\leq": "≤", r"\le": "≤", r"\geq": "≥", r"\ge": "≥",
+    r"\neq": "≠", r"\ne": "≠", r"\approx": "≈", r"\sim": "~",
+    r"\equiv": "≡", r"\propto": "∝",
+    r"\infty": "∞", r"\partial": "∂", r"\nabla": "∇",
+    r"\in": "∈", r"\notin": "∉",
+    r"\subset": "⊂", r"\subseteq": "⊆", r"\supset": "⊃", r"\supseteq": "⊇",
+    r"\cap": "∩", r"\cup": "∪",
+    r"\forall": "∀", r"\exists": "∃", r"\nexists": "∄", r"\neg": "¬",
+    r"\to": "→", r"\rightarrow": "→", r"\leftarrow": "←",
+    r"\Rightarrow": "⇒", r"\Leftarrow": "⇐", r"\Leftrightarrow": "⇔",
+    r"\sum": "∑", r"\prod": "∏", r"\int": "∫",
+    r"\circ": "°", r"\bullet": "•",
+}
+
+SUP_MAP = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
+    "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+    "+": "+", "-": "-", "=": "=", "(": "(", ")": ")",
+    "n": "ⁿ", "i": "ⁱ", "x": "ˣ", "y": "ʸ",
+}
+
+SUB_MAP = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+    "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+    "+": "+", "-": "-", "=": "=", "(": "(", ")": ")",
+}
+
+
+def _convert_math_fragment(s: str) -> str:
+    """Convert a single LaTeX math fragment into a clean readable Unicode representation."""
+    # LaTeX text styling macros
+    s = re.sub(r"\\(?:textbf|mathbf)\{([^}]+)\}", r"**\1**", s)
+    s = re.sub(r"\\(?:textit|mathit)\{([^}]+)\}", r"*\1*", s)
+    s = re.sub(r"\\(?:text|mathrm|operatorname)\{([^}]+)\}", r"\1", s)
+
+    # Fractions: \frac{a}{b} -> (a)/(b)
+    s = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"(\1)/(\2)", s)
+
+    # Roots: \sqrt[n]{x} -> (n)√(x), \sqrt{x} -> √(x)
+    s = re.sub(r"\\sqrt\[([^\]]+)\]\{([^{}]+)\}", r"(\1)√(\2)", s)
+    s = re.sub(r"\\sqrt\{([^{}]+)\}", r"√(\1)", s)
+
+    # Greek letters
+    for cmd, sym in sorted(GREEK_MAP.items(), key=lambda x: -len(x[0])):
+        s = re.sub(re.escape(cmd) + r"(?![a-zA-Z])", sym, s)
+
+    # Math symbols
+    for cmd, sym in sorted(MATH_SYMBOL_MAP.items(), key=lambda x: -len(x[0])):
+        s = re.sub(re.escape(cmd) + r"(?![a-zA-Z])", sym, s)
+
+    # Superscripts: ^{123} or ^2
+    def replace_sup(m):
+        content = m.group(1) or m.group(2)
+        return "".join(SUP_MAP.get(c, c) for c in content)
+    s = re.sub(r"\^\{([^}]+)\}|\^([0-9nixy+\-])", replace_sup, s)
+
+    # Subscripts: _{123} or _2
+    def replace_sub(m):
+        content = m.group(1) or m.group(2)
+        return "".join(SUB_MAP.get(c, c) for c in content)
+    s = re.sub(r"\_\{([^}]+)\}|\_([0-9+\-])", replace_sub, s)
+
+    return s.strip()
+
+
+def _convert_inline_latex(text: str) -> str:
+    """Detect inline math ($...$, \\(...\\)) and common LaTeX syntax, converting to clean Unicode."""
+    if not text:
+        return ""
+
+    # Replace inline math: $...$
+    def repl_dollar(m):
+        return _convert_math_fragment(m.group(1))
+
+    # Match $...$ where $ is not escaped with backslash
+    text = re.sub(r"(?<!\\)\$([^\$\n]+?)(?<!\\)\$", repl_dollar, text)
+    # Match \(...\)
+    text = re.sub(r"\\\((.+?)\\\)", repl_dollar, text)
+
+    # Convert any remaining unenclosed common LaTeX commands if present
+    text = _convert_math_fragment(text)
+    # Unescape escaped dollar signs
+    text = text.replace(r"\$", "$")
+    return text
+
+
+def _render_latex_math(
+    latex_code: str,
+    dpi: int = 300,
+    color: Optional[Tuple[int, int, int]] = None
+) -> Tuple[Optional[io.BytesIO], float, float]:
+    """
+    Render a LaTeX math formula into an in-memory PNG buffer using matplotlib.mathtext.
+    Returns (bytes_io, width_mm, height_mm). If rendering fails or mathtext is unavailable, returns (None, 0.0, 0.0).
+    """
+    if mathtext is None or PILImage is None:
+        return None, 0.0, 0.0
+
+    raw_eq = latex_code.strip()
+    # Strip any enclosing math delimiters
+    if raw_eq.startswith("$$") and raw_eq.endswith("$$") and len(raw_eq) >= 4:
+        raw_eq = raw_eq[2:-2].strip()
+    elif raw_eq.startswith(r"\[") and raw_eq.endswith(r"\]") and len(raw_eq) >= 4:
+        raw_eq = raw_eq[2:-2].strip()
+    elif raw_eq.startswith("$") and raw_eq.endswith("$") and len(raw_eq) >= 2:
+        raw_eq = raw_eq[1:-1].strip()
+
+    eq_formatted = f"${raw_eq}$"
+
+    buf = io.BytesIO()
+    hex_color = None
+    if color:
+        hex_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
+
+    try:
+        mathtext.math_to_image(eq_formatted, buf, dpi=dpi, format="png", color=hex_color)
+        buf.seek(0)
+        with PILImage.open(buf) as img:
+            px_w, px_h = img.size
+        # Convert pixels to mm: 1 inch = 25.4 mm
+        w_mm = (px_w / float(dpi)) * 25.4
+        h_mm = (px_h / float(dpi)) * 25.4
+        buf.seek(0)
+        return buf, w_mm, h_mm
+    except Exception as e:
+        logger.warning("LaTeX mathtext rendering failed for '%s': %s", raw_eq, e)
+        return None, 0.0, 0.0
+
 
 
 class PDFReportBuilder(FPDF):
@@ -226,28 +379,41 @@ class PDFReportBuilder(FPDF):
         self.ln(10)
 
         if description:
+            description = _convert_inline_latex(description)
             c_bg_r, c_bg_g, c_bg_b = self.theme["card_bg"]
             c_b_r, c_b_g, c_b_b = self.theme["card_border"]
             self.set_fill_color(c_bg_r, c_bg_g, c_bg_b)
             self.set_draw_color(c_b_r, c_b_g, c_b_b)
             self.set_line_width(0.35)
 
-            desc_lines = len(description.split("\n")) + int(len(description) / 75)
-            box_h = max(25, desc_lines * 5.2 + 8)
+            desc_w = 154.0
+            desc_line_h = 4.8
+            self.set_font(self.font_sans, "", 9)
+            desc_h = self.multi_cell(
+                desc_w,
+                desc_line_h,
+                description,
+                dry_run=True,
+                output=MethodReturnValue.HEIGHT
+            )
+            title_h = 5.5
+            pad_y = 4.0
+            gap = 2.0
+            box_h = max(24.0, pad_y * 2 + title_h + gap + desc_h)
 
             cur_y = self.get_y()
             self.rect(24, cur_y, 164, box_h, "DF")
 
-            self.set_xy(28, cur_y + 4)
+            self.set_xy(28, cur_y + pad_y)
             self.set_font(self.font_sans, "B", 9.5)
             self.set_text_color(p_r, p_g, p_b)
-            self.cell(0, 5.5, "GENEL BİLGİ VE ÖZET:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.cell(desc_w, title_h, "GENEL BİLGİ VE ÖZET:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-            self.set_x(28)
+            self.set_xy(28, cur_y + pad_y + title_h + gap)
             self.set_font(self.font_sans, "", 9)
             self.set_text_color(50, 60, 75)
-            self.multi_cell(156, 4.8, description)
-            self.set_y(cur_y + box_h + 8)
+            self.multi_cell(desc_w, desc_line_h, description)
+            self.set_y(cur_y + box_h + 8.0)
 
         if metadata:
             self.set_y(225)
@@ -263,20 +429,38 @@ class PDFReportBuilder(FPDF):
         self.is_cover = False
 
     def add_section_header(self, title: str, subtitle: str = ""):
-        self.check_page_break(32)
+        title = _convert_inline_latex(title)
+        if subtitle:
+            subtitle = _convert_inline_latex(subtitle)
+
+        banner_w = 174.0
+        text_w = 166.0
+        line_h = 5.2
+
+        self.set_font(self.font_sans, "B", 10.5)
+        title_h = self.multi_cell(
+            text_w,
+            line_h,
+            title,
+            dry_run=True,
+            output=MethodReturnValue.HEIGHT
+        )
+        banner_h = max(11.0, title_h + 4.0)
+
+        self.check_page_break(banner_h + (8.0 if subtitle else 4.0))
         self.ln(5)
         cur_y = self.get_y()
 
         p_r, p_g, p_b = self.theme["primary"]
         self.set_fill_color(p_r, p_g, p_b)
-        self.rect(18, cur_y, 174, 11, "F")
+        self.rect(18, cur_y, banner_w, banner_h, "F")
 
-        self.set_xy(22, cur_y + 1.8)
+        self.set_xy(22, cur_y + (banner_h - title_h) / 2.0)
         self.set_font(self.font_sans, "B", 10.5)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 7, title)
+        self.multi_cell(text_w, line_h, title)
 
-        self.set_y(cur_y + 13)
+        self.set_y(cur_y + banner_h + 2.0)
         if subtitle:
             self.set_font(self.font_sans, "I", 9)
             self.set_text_color(70, 85, 105)
@@ -284,21 +468,28 @@ class PDFReportBuilder(FPDF):
             self.ln(2)
 
     def add_qa(self, q_num: str, question: str, answer: str):
-        self.check_page_break(25)
-        self.ln(2.5)
-        cur_y = self.get_y()
-        self.set_font(self.font_sans, "B", 9.5)
-
+        question = _convert_inline_latex(question)
         prefix = f"Soru {q_num}: " if q_num else ""
         full_q = f"{prefix}{question}"
 
-        str_w = self.get_string_width(full_q)
-        lines_est = max(len(full_q.split("\n")), int(str_w / 155) + 1)
-        box_h = max(9.5, lines_est * 5.2 + 3.5)
+        content_w = 164.0
+        pad_x = 6.0
+        pad_y = 3.5
+        line_h = 4.8
 
-        if cur_y + box_h > 275:
-            self.add_page()
-            cur_y = self.get_y()
+        self.set_font(self.font_sans, "B", 9.5)
+        text_h = self.multi_cell(
+            content_w,
+            line_h,
+            full_q,
+            dry_run=True,
+            output=MethodReturnValue.HEIGHT
+        )
+        box_h = pad_y * 2 + text_h
+
+        self.check_page_break(box_h + 4.0)
+        self.ln(2.5)
+        cur_y = self.get_y()
 
         bg_r, bg_g, bg_b = self.theme["card_bg"]
         b_r, b_g, b_b = self.theme["card_border"]
@@ -311,15 +502,19 @@ class PDFReportBuilder(FPDF):
         self.set_fill_color(a_r, a_g, a_b)
         self.rect(18, cur_y, 2.5, box_h, "F")
 
-        self.set_xy(23, cur_y + 1.8)
+        self.set_xy(18 + pad_x, cur_y + pad_y)
         self.set_text_color(20, 45, 80)
-        self.multi_cell(166, 4.8, full_q)
+        self.multi_cell(content_w, line_h, full_q)
         self.set_y(cur_y + box_h + 2.5)
 
         if answer:
             self.add_paragraph(answer)
 
     def add_paragraph(self, text: str, bold_prefix: str = ""):
+        text = _convert_inline_latex(text)
+        if bold_prefix:
+            bold_prefix = _convert_inline_latex(bold_prefix)
+
         self.check_page_break(12)
         self.set_font(self.font_sans, "", 9)
         t_r, t_g, t_b = self.theme["text_body"]
@@ -333,6 +528,10 @@ class PDFReportBuilder(FPDF):
         self.ln(1.8)
 
     def add_bullet(self, title: str, text: str):
+        if title:
+            title = _convert_inline_latex(title)
+        text = _convert_inline_latex(text)
+
         self.check_page_break(13)
         self.set_font(self.font_sans, "B", 9)
         p_r, p_g, p_b = self.theme["primary"]
@@ -349,25 +548,84 @@ class PDFReportBuilder(FPDF):
         self.ln(1.2)
 
     def add_code_block(self, code_text: str):
-        lines = code_text.strip().split("\n")
-        h = len(lines) * 4.8 + 4
-        self.check_page_break(min(h + 4, 65))
-        cur_y = self.get_y()
+        code_text = code_text.rstrip()
+        if not code_text:
+            return
+
+        self.set_font(self.font_mono, "", 8.5)
+        max_text_w = 162.0
+        line_h = 4.6
+        pad_y = 3.0
+        pad_x = 4.0
+        box_w = 170.0
+        box_x = 22.0
+
+        # Soft-wrap long lines to prevent horizontal overflow
+        formatted_lines: List[str] = []
+        for raw_line in code_text.split("\n"):
+            if self.get_string_width(raw_line) <= max_text_w:
+                formatted_lines.append(raw_line)
+            else:
+                words = raw_line.split(" ")
+                cur_l = ""
+                for w in words:
+                    candidate = (cur_l + " " + w) if cur_l else w
+                    if self.get_string_width(candidate) <= max_text_w:
+                        cur_l = candidate
+                    else:
+                        if cur_l:
+                            formatted_lines.append(cur_l)
+                            cur_l = "    " + w
+                        else:
+                            for ch in w:
+                                if self.get_string_width(cur_l + ch) <= max_text_w:
+                                    cur_l += ch
+                                else:
+                                    formatted_lines.append(cur_l)
+                                    cur_l = "    " + ch
+                if cur_l:
+                    formatted_lines.append(cur_l)
 
         c_bg_r, c_bg_g, c_bg_b = self.theme["code_bg"]
         c_b_r, c_b_g, c_b_b = self.theme["code_border"]
-        self.set_fill_color(c_bg_r, c_bg_g, c_bg_b)
-        self.set_draw_color(c_b_r, c_b_g, c_b_b)
-        self.set_line_width(0.3)
-        self.rect(22, cur_y, 170, h, "DF")
 
-        self.set_xy(25, cur_y + 2)
-        self.set_font(self.font_mono, "", 8.5)
-        self.set_text_color(30, 35, 45)
-        for line in lines:
-            self.cell(0, 4.8, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            self.set_x(25)
-        self.set_y(cur_y + h + 2.5)
+        # Check if entire block fits on current page; if not and fits on new page, break early
+        total_h = len(formatted_lines) * line_h + pad_y * 2
+        cur_y = self.get_y()
+        if cur_y + total_h > 275.0 and total_h <= 245.0:
+            self.add_page()
+            cur_y = self.get_y()
+
+        # Render chunk by chunk so page breaks never split the rectangle awkwardly
+        line_idx = 0
+        n_lines = len(formatted_lines)
+        while line_idx < n_lines:
+            cur_y = self.get_y()
+            avail_h = 275.0 - cur_y
+            lines_fit = int((avail_h - pad_y * 2) / line_h)
+            if lines_fit < 1:
+                self.add_page()
+                cur_y = self.get_y()
+                avail_h = 275.0 - cur_y
+                lines_fit = max(1, int((avail_h - pad_y * 2) / line_h))
+
+            chunk = formatted_lines[line_idx : line_idx + lines_fit]
+            chunk_h = len(chunk) * line_h + pad_y * 2
+
+            self.set_fill_color(c_bg_r, c_bg_g, c_bg_b)
+            self.set_draw_color(c_b_r, c_b_g, c_b_b)
+            self.set_line_width(0.3)
+            self.rect(box_x, cur_y, box_w, chunk_h, "DF")
+
+            self.set_xy(box_x + pad_x, cur_y + pad_y)
+            self.set_font(self.font_mono, "", 8.5)
+            self.set_text_color(30, 35, 45)
+            for line in chunk:
+                self.cell(box_w - pad_x * 2, line_h, line, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+                self.set_x(box_x + pad_x)
+
+            self.set_y(cur_y + chunk_h + 2.5)
+            line_idx += len(chunk)
 
     def add_table(
         self,
@@ -415,26 +673,42 @@ class PDFReportBuilder(FPDF):
             if headers:
                 hdr_row = table.row()
                 for h_text in headers:
-                    hdr_row.cell(str(h_text))
+                    hdr_row.cell(str(_convert_inline_latex(str(h_text))))
             for r_data in rows:
                 row = table.row()
                 for cell_val in r_data:
-                    row.cell(str(cell_val))
+                    row.cell(str(_convert_inline_latex(str(cell_val))))
 
         self.ln(3)
 
     def add_callout(self, text: str, kind: str = "note", title: str = ""):
-        """Render a styled callout / alert box (note, tip, warning, important, caution)."""
+        """Render a styled callout / alert box with dynamic height measurement to prevent overflow."""
+        text = _convert_inline_latex(text)
         style = CALLOUT_STYLES.get(kind.lower(), CALLOUT_STYLES["note"])
         box_title = title if title else style["default_title"]
+        if box_title:
+            box_title = _convert_inline_latex(box_title)
 
-        self.set_font(self.font_sans, "", 9)
-        str_w = self.get_string_width(text)
-        lines_est = max(len(text.split("\n")), int(str_w / 152) + 1)
-        box_h = max(14, lines_est * 5.0 + 10)
+        content_w = 162.0
+        pad_x = 6.0
+        pad_y = 3.5
+        line_h = 4.8
+        title_h = 5.0 if box_title else 0.0
+        gap = 2.0 if box_title else 0.0
 
-        self.check_page_break(box_h + 4)
-        self.ln(2)
+        # Exact multi_cell text height measurement
+        self.set_font(self.font_sans, "", 8.8)
+        text_h = self.multi_cell(
+            content_w,
+            line_h,
+            text,
+            dry_run=True,
+            output=MethodReturnValue.HEIGHT
+        )
+        box_h = pad_y * 2 + title_h + gap + text_h
+
+        self.check_page_break(box_h + 4.0)
+        self.ln(2.0)
         cur_y = self.get_y()
 
         bg_r, bg_g, bg_b = style["bg"]
@@ -449,18 +723,94 @@ class PDFReportBuilder(FPDF):
         self.set_fill_color(a_r, a_g, a_b)
         self.rect(18, cur_y, 3.0, box_h, "F")
 
-        self.set_xy(24, cur_y + 2.2)
-        self.set_font(self.font_sans, "B", 9)
-        self.set_text_color(a_r, a_g, a_b)
-        self.cell(0, 5, box_title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        inner_y = cur_y + pad_y
+        if box_title:
+            self.set_xy(18 + pad_x, inner_y)
+            self.set_font(self.font_sans, "B", 9)
+            self.set_text_color(a_r, a_g, a_b)
+            self.cell(content_w, title_h, box_title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            inner_y += title_h + gap
 
-        self.set_x(24)
+        self.set_xy(18 + pad_x, inner_y)
         self.set_font(self.font_sans, "", 8.8)
         t_r, t_g, t_b = self.theme["text_body"]
         self.set_text_color(t_r, t_g, t_b)
-        self.multi_cell(164, 4.8, text)
+        self.multi_cell(content_w, line_h, text)
 
-        self.set_y(cur_y + box_h + 3)
+        self.set_y(cur_y + box_h + 3.0)
+
+    def add_math(
+        self,
+        equation: str,
+        caption: str = "",
+        label: str = ""
+    ):
+        """
+        Render a standalone LaTeX math equation block inside an elegant math card.
+        Uses matplotlib.mathtext for publication-grade mathematical typography.
+        """
+        raw_eq = equation.strip()
+        if not raw_eq:
+            return
+
+        buf, w_mm, h_mm = _render_latex_math(raw_eq, dpi=300, color=self.theme["text_dark"])
+
+        # Fallback if mathtext failed or was unavailable
+        if buf is None:
+            display_text = _convert_inline_latex(raw_eq)
+            self.add_callout(
+                display_text,
+                kind="note",
+                title=caption or (f"DENKLEM {label}".strip() if label else "MATEMATİK DENKLEMİ")
+            )
+            return
+
+        # Responsive scaling if equation is wider than available card width
+        max_eq_w = 155.0
+        if w_mm > max_eq_w:
+            ratio = max_eq_w / w_mm
+            w_mm = max_eq_w
+            h_mm = h_mm * ratio
+
+        pad_y = 4.0
+        cap_h = 5.0 if caption else 0.0
+        gap = 2.0 if caption else 0.0
+        card_h = pad_y * 2 + h_mm + cap_h + gap
+        card_w = 174.0
+
+        self.check_page_break(card_h + 4.0)
+        self.ln(2.5)
+        cur_y = self.get_y()
+
+        c_bg_r, c_bg_g, c_bg_b = self.theme["card_bg"]
+        c_b_r, c_b_g, c_b_b = self.theme["card_border"]
+        self.set_fill_color(c_bg_r, c_bg_g, c_bg_b)
+        self.set_draw_color(c_b_r, c_b_g, c_b_b)
+        self.set_line_width(0.35)
+        self.rect(18, cur_y, card_w, card_h, "DF")
+
+        a_r, a_g, a_b = self.theme["accent"]
+        self.set_fill_color(a_r, a_g, a_b)
+        self.rect(18, cur_y, 2.5, card_h, "F")
+
+        eq_x = 18.0 + (card_w - w_mm) / 2.0
+        eq_y = cur_y + pad_y
+
+        self.image(buf, x=eq_x, y=eq_y, w=w_mm, h=h_mm)
+
+        if label:
+            self.set_font(self.font_sans, "B", 9)
+            self.set_text_color(100, 115, 130)
+            self.set_xy(18 + card_w - 20, eq_y + (h_mm - 5.0) / 2.0)
+            self.cell(16, 5.0, f"({label})", align="R")
+
+        if caption:
+            self.set_xy(22, eq_y + h_mm + gap)
+            self.set_font(self.font_sans, "I", 8.5)
+            self.set_text_color(85, 95, 110)
+            self.cell(card_w - 8.0, cap_h, caption, align="C")
+
+        self.set_y(cur_y + card_h + 3.0)
 
     def add_image(self, image_path: str, caption: str = "", max_w: float = 160.0):
         """Embed an image with automatic aspect-ratio scaling, centering, and optional caption."""
@@ -512,8 +862,9 @@ class PDFReportBuilder(FPDF):
 
 
 def _clean_md_inline(text: str) -> str:
-    """Strip inline Markdown markers (**bold**, `code`) for plain cell/text rendering."""
-    s = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    """Convert inline LaTeX math and strip inline Markdown markers (**bold**, `code`)."""
+    s = _convert_inline_latex(text)
+    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
     s = re.sub(r"__(.+?)__", r"\1", s)
     s = re.sub(r"`(.+?)`", r"\1", s)
     return s.strip()
@@ -589,9 +940,62 @@ def parse_markdown_to_doc_data(
             idx += 1
             continue
 
-        # 2. Fenced Code Block: ```lang ... ```
+        # 2. Block Math: $$ ... $$
+        if stripped.startswith("$$"):
+            flush_active_qa()
+            if stripped.endswith("$$") and len(stripped) > 2:
+                eq_content = stripped[2:-2].strip()
+                idx += 1
+            else:
+                idx += 1
+                eq_lines = []
+                while idx < n and not lines[idx].strip().endswith("$$"):
+                    eq_lines.append(lines[idx])
+                    idx += 1
+                if idx < n and lines[idx].strip().endswith("$$"):
+                    last_l = lines[idx].strip()[:-2].strip()
+                    if last_l:
+                        eq_lines.append(last_l)
+                    idx += 1
+                eq_content = "\n".join(eq_lines).strip()
+            if eq_content:
+                sec = ensure_section()
+                sec["items"].append({
+                    "type": "math",
+                    "equation": eq_content
+                })
+            continue
+
+        # 3. Block Math: \[ ... \]
+        if stripped.startswith(r"\["):
+            flush_active_qa()
+            if stripped.endswith(r"\]") and len(stripped) > 2:
+                eq_content = stripped[2:-2].strip()
+                idx += 1
+            else:
+                idx += 1
+                eq_lines = []
+                while idx < n and not lines[idx].strip().endswith(r"\]"):
+                    eq_lines.append(lines[idx])
+                    idx += 1
+                if idx < n and lines[idx].strip().endswith(r"\]"):
+                    last_l = lines[idx].strip()[:-2].strip()
+                    if last_l:
+                        eq_lines.append(last_l)
+                    idx += 1
+                eq_content = "\n".join(eq_lines).strip()
+            if eq_content:
+                sec = ensure_section()
+                sec["items"].append({
+                    "type": "math",
+                    "equation": eq_content
+                })
+            continue
+
+        # 4. Fenced Code Block: ```lang ... ```
         if stripped.startswith("```"):
             flush_active_qa()
+            lang_tag = stripped[3:].strip().lower()
             idx += 1
             code_lines = []
             while idx < n and not lines[idx].strip().startswith("```"):
@@ -599,10 +1003,16 @@ def parse_markdown_to_doc_data(
                 idx += 1
             idx += 1  # Skip closing ```
             sec = ensure_section()
-            sec["items"].append({
-                "type": "code",
-                "code": "\n".join(code_lines)
-            })
+            if lang_tag in ("math", "latex", "tex"):
+                sec["items"].append({
+                    "type": "math",
+                    "equation": "\n".join(code_lines).strip()
+                })
+            else:
+                sec["items"].append({
+                    "type": "code",
+                    "code": "\n".join(code_lines)
+                })
             continue
 
         # 3. Markdown Table: | col1 | col2 |
@@ -770,6 +1180,8 @@ def parse_markdown_to_doc_data(
                 not pl
                 or pl.startswith("#")
                 or pl.startswith("```")
+                or pl.startswith("$$")
+                or pl.startswith(r"\[")
                 or pl.startswith(">")
                 or pl.startswith("![")
                 or (pl.startswith("|") and pl.endswith("|"))
@@ -888,6 +1300,12 @@ def build_pdf_document(doc_data: Dict[str, Any], output_path: str) -> str:
                 )
             elif item_type == "code":
                 builder.add_code_block(item.get("code", ""))
+            elif item_type == "math":
+                builder.add_math(
+                    equation=item.get("equation", "") or item.get("code", ""),
+                    caption=item.get("caption", ""),
+                    label=item.get("label", "")
+                )
             elif item_type == "table":
                 builder.add_table(
                     headers=item.get("headers", []),

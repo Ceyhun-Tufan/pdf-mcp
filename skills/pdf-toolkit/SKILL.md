@@ -18,8 +18,8 @@ This skill guides the agent in effectively using the **`pdf-toolkit`** MCP serve
 2. **`pdf_get_metadata`**: Checks total pages, file size, title, and author before performing heavy operations.
 3. **`pdf_search_batch`**: Scans multiple PDFs (e.g. `*.pdf`) for keywords/regex and returns page numbers with snippet previews.
 4. **`pdf_compare_files`**: Page-by-page textual comparison of two PDFs.
-5. **`pdf_from_markdown`** *(Recommended for Document Generation)*: Compiles a `.md` file (`markdown_file`) or raw Markdown string (`markdown_text`) directly into a publication-grade A4 PDF with cover page, headers/footers, styled Q&A cards, shaded code blocks, styled tables, alert callouts, embedded images, and full Turkish/Unicode support. **Never write intermediate Python scripts to dump JSON when you can write or pass Markdown directly!**
-6. **`pdf_generate_report`**: Generates a PDF document from structured JSON data or an external file path (`input_file`). Supports item types: `qa`, `paragraph`, `bullet`, `code`, `table`, `callout`, and `image`.
+5. **`pdf_from_markdown`** *(Recommended for Document Generation)*: Compiles a `.md` file (`markdown_file`) or raw Markdown string (`markdown_text`) directly into a publication-grade A4 PDF with cover page, headers/footers, styled Q&A cards, LaTeX block & inline math equations (`$$...$$`, `$x^2$`), shaded code blocks, styled tables, alert callouts, embedded images, and full Turkish/Unicode support. **Never write intermediate Python scripts to dump JSON when you can write or pass Markdown directly!**
+6. **`pdf_generate_report`**: Generates a PDF document from structured JSON data or an external file path (`input_file`). Supports item types: `qa`, `paragraph`, `bullet`, `code`, `math`, `table`, `callout`, and `image`.
 
 ---
 
@@ -75,6 +75,7 @@ Supported item types inside `sections[].items`:
 - `paragraph`: `{"type": "paragraph", "bold_prefix": "Note:", "text": "..."}`
 - `bullet`: `{"type": "bullet", "title": "Title", "text": "..."}`
 - `code`: `{"type": "code", "code": "SELECT 1;"}`
+- `math`: `{"type": "math", "equation": "\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}", "caption": "Gaussian Integral", "label": "1.1"}`
 - `table`: `{"type": "table", "headers": ["A", "B"], "rows": [["1", "2"]]}`
 - `callout`: `{"type": "callout", "kind": "note|tip|warning|important|caution", "title": "...", "text": "..."}`
 - `image`: `{"type": "image", "image_path": "C:/path/to/img.png", "caption": "Figure 1"}`

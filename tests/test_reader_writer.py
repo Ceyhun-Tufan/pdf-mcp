@@ -191,6 +191,129 @@ SELECT service_name, status FROM nodes WHERE healthy = true;
             if os.path.exists(p):
                 os.remove(p)
 
+    def test_latex_math_blocks_and_inline(self):
+        test_math_pdf = os.path.join(cur_dir, "test_math_output.pdf")
+        md_content = """---
+title: LaTeX Matematik ve Denklem Testi
+subtitle: Blok ve Satır İçi Matematik Derleme
+category: MATEMATİK RAPORU
+theme: navy_blue
+---
+
+# BÖLÜM 1: FORMÜLLER VE DENKLEMLER
+
+## Soru 1: Gauss İntegrali nedir?
+Gauss integrali matematikte $I = \\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$ olarak ifade edilen temel integraldir.
+Ayrıca kinetik enerji formülü $E = \\frac{1}{2}mv^2$ ve kütle-enerji eşitliği $E = mc^2$ biçimindedir.
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+$$
+
+```math
+x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}
+```
+
+> [!NOTE] Önemli Denklem Bilgisi
+> Formüldeki $\\Delta = b^2 - 4ac$ değeri diskriminant olarak adlandırılır. $\\alpha \\le \\beta$ ve $\\lambda \\to 0$.
+"""
+        parsed = parse_markdown_to_doc_data(md_content)
+        items = parsed["sections"][0]["items"]
+        math_items = [it for it in items if it.get("type") == "math"]
+        self.assertGreaterEqual(len(math_items), 2)
+        self.assertIn(r"\int", math_items[0]["equation"])
+
+        out = build_pdf_from_markdown(output_path=test_math_pdf, markdown_text=md_content)
+        self.assertTrue(os.path.exists(out))
+        self.assertGreater(os.path.getsize(out), 5000)
+
+        if os.path.exists(test_math_pdf):
+            os.remove(test_math_pdf)
+
+    def test_callout_and_qa_overflow_resilience(self):
+        test_overflow_pdf = os.path.join(cur_dir, "test_overflow_output.pdf")
+        long_callout = (
+            "Bu çağrı kutusu özellikle metin kaydırma sınırlarını test etmek amacıyla hazırlanmıştır. "
+            "Eski kaba formülde satır sayısı tahmin edilirken kelime sınırları hesaba katılmadığından "
+            "metin kutunun alt sınırından dışarı taşıyor ve bir sonraki paragrafın üstüne biniyordu. "
+            "Artık fpdf2 dry_run=True ile tam piksel yüksekliği ölçüldüğü için kutu tam boyutta açılmakta "
+            "ve altındaki içerikle hiçbir şekilde çakışmamaktadır.\n\n"
+            "İkinci paragraf: Ayrıca çoklu satırlar ve boşluklar da güvenle işlenir."
+        )
+        long_q = (
+            "Bu çok uzun bir soru metnidir ve birden fazla satıra sarılması gerekmektedir. "
+            "Soru kutularında da eski formül satır sayısını eksik tahmin ediyor ve soru kartının "
+            "çerçevesi metinden daha kısa kalıyordu. Şimdi ise dinamik ölçümle tam oturmaktadır?"
+        )
+
+        data = {
+            "title": "Kutu Taşma Dayanıklılık Testi",
+            "description": "Uzun açıklamaların kapak kutusundan taşmadığını ve alttaki meta verilerle çakışmadığını doğrulayan açıklama metni. " * 3,
+            "sections": [
+                {
+                    "title": "Bölüm 1: Taşma ve Sınır Kontrolleri",
+                    "items": [
+                        {"type": "qa", "q_num": "1", "question": long_q, "answer": "Kusursuz cevap metni."},
+                        {"type": "callout", "kind": "warning", "title": "UZUN METİN TESTİ", "text": long_callout},
+                        {"type": "paragraph", "text": "Bu paragraf kutunun tam altına basılmalı, kutuyla çakışmamalıdır."}
+                    ]
+                }
+            ]
+        }
+        out = build_pdf_document(data, test_overflow_pdf)
+        self.assertTrue(os.path.exists(out))
+        self.assertGreater(os.path.getsize(out), 3000)
+
+        if os.path.exists(test_overflow_pdf):
+            os.remove(test_overflow_pdf)
+
+    def test_code_block_long_lines_and_wrapping(self):
+        test_code_pdf = os.path.join(cur_dir, "test_code_output.pdf")
+        long_code = (
+            "SELECT id, service_name, deployment_region, cluster_ip, health_status, latency_ms, last_heartbeat "
+            "FROM microservices_registry_production_eu_central_1 WHERE environment = 'production' AND status = 'healthy' "
+            "ORDER BY latency_ms ASC LIMIT 100;"
+        )
+        data = {
+            "title": "Kod Bloğu Sarma Testi",
+            "sections": [
+                {
+                    "title": "Bölüm 1: Uzun Kod Satırları",
+                    "items": [
+                        {"type": "code", "code": long_code}
+                    ]
+                }
+            ]
+        }
+        out = build_pdf_document(data, test_code_pdf)
+        self.assertTrue(os.path.exists(out))
+        self.assertGreater(os.path.getsize(out), 2000)
+
+        if os.path.exists(test_code_pdf):
+            os.remove(test_code_pdf)
+
+    def test_malformed_math_graceful_fallback(self):
+        test_fallback_pdf = os.path.join(cur_dir, "test_fallback_output.pdf")
+        # An equation with deliberately broken TeX that mathtext cannot parse
+        broken_eq = r"\unsupportedcommand{broken}{syntax"
+        data = {
+            "title": "Geçersiz Matematik Hata Toleransı Testi",
+            "sections": [
+                {
+                    "title": "Bölüm 1: Fallback Testi",
+                    "items": [
+                        {"type": "math", "equation": broken_eq, "caption": "Hatalı TeX Toleransı"}
+                    ]
+                }
+            ]
+        }
+        out = build_pdf_document(data, test_fallback_pdf)
+        self.assertTrue(os.path.exists(out))
+        self.assertGreater(os.path.getsize(out), 2000)
+
+        if os.path.exists(test_fallback_pdf):
+            os.remove(test_fallback_pdf)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -170,7 +170,7 @@ TOOLS_DEFINITIONS = [
                 },
                 "sections": {
                     "type": "array",
-                    "description": "List of document sections. Each section has 'title', optional 'subtitle', and an 'items' array with items of type 'qa', 'paragraph', 'bullet', 'code', 'table', 'callout', or 'image'.",
+                    "description": "List of document sections. Each section has 'title', optional 'subtitle', and an 'items' array with items of type 'qa', 'paragraph', 'bullet', 'code', 'math', 'table', 'callout', or 'image'.",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -187,7 +187,7 @@ TOOLS_DEFINITIONS = [
     },
     {
         "name": "pdf_from_markdown",
-        "description": "Compile a Markdown file (.md) or raw Markdown string directly into a styled, publication-grade PDF report without needing JSON conversion. Supports YAML frontmatter, # sections, ##/### Q&A headers, ```code blocks```, | tables |, > [!NOTE] callouts, ![caption](image) figures, and bullet points.",
+        "description": "Compile a Markdown file (.md) or raw Markdown string directly into a styled, publication-grade PDF report without needing JSON conversion. Supports YAML frontmatter, # sections, ##/### Q&A headers, $$...$$ or ```math LaTeX equations, ```code blocks```, | tables |, > [!NOTE] callouts, ![caption](image) figures, and bullet points.",
         "inputSchema": {
             "type": "object",
             "properties": {
